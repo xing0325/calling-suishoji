@@ -1,26 +1,33 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
-import { getDb } from "../db";
+import { getDb, getRawPool } from "../db";
 import { notes, diaries, streaks, loginLogs, schedules, classificationLogs } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 
 // 已知的有效分类
-const VALID_CATEGORIES = ['task', 'wish', 'input', 'output', 'diary', 'schedule'];
+const VALID_CATEGORIES = ['task', 'wish', 'input', 'output', 'diary'];
 // 日记提取待办可用的分类（不包含 diary）
 const TODO_CATEGORIES = ['task', 'wish', 'input', 'output'] as const;
 type TodoCategory = typeof TODO_CATEGORIES[number];
 
 // AI分类的系统提示词
 const CLASSIFY_SYSTEM_PROMPT = `你是CALLING应用的智能助手，专门负责分析用户的随手记并进行精准分类整理。
+今天的日期是：${new Date().toISOString().split('T')[0]}
 
 【核心分类原则】
 1. 对外负责（责任）：需要向外界交代、有明确义务的事项 → category: "task"
 2. 自我输入：自己消费/学习外界内容，不需要对外负责 → category: "input"
 3. 自我输出：自己的创作灵感、选题想法 → category: "output"
-4. 日程/事件：提到具体日期时间的计划 → category: "schedule"
-5. 日记：情绪、感悟、日常记录 → category: "diary"
-6. 愿望：想做但没有明确义务的事 → category: "wish"
+4. 日记：情绪、感悟、日常记录 → category: "diary"
+5. 愿望：想做但没有明确义务的事 → category: "wish"
+
+【重要：日程时间是附加属性，不是独立分类】
+- 任何 category 的内容，只要提到了具体日期或时间，都应同时填写 scheduleDate 和 scheduleTime
+- 例如："今晚七点看电影《美国x档案》" → category: "input"，subCategory: "movie"，scheduleDate: 今天日期，scheduleTime: "19:00"
+- 例如："明天下午3点开组会" → category: "task"，scheduleDate: 明天日期，scheduleTime: "15:00"
+- 例如："下周五想去爬山" → category: "wish"，scheduleDate: 下周五日期，scheduleTime: null
+- 相对日期（今天/明天/后天/下周X/本周X）请根据今天日期推算为 YYYY-MM-DD 格式
 
 【判断规则 - 责任 vs 输入/输出】
 - 如果是"看了一部电影/读了一本书/听了一个播客"这类自己主动消费的行为 → "input"，不是"task"
@@ -64,22 +71,17 @@ const CLASSIFY_SYSTEM_PROMPT = `你是CALLING应用的智能助手，专门负�
 【日记类 - category: "diary"】
 - 日常记录、感悟、情绪等
 
-【日程/事件类 - category: "schedule"】
-- 提到了具体日期或时间的事件、约定、计划（如"明天下午3点开会"、"下周五去北京"、"5月1日飞盘比赛"）
-- subCategory: "event"（活动/事件）、"meeting"（会议/约定）、"trip"（出行/旅行）、"reminder"（提醒事项）
-- 必须提取：scheduleDate（具体日期，YYYY-MM-DD格式，如果是相对日期如"明天"请根据今天日期推算）、scheduleTime（具体时间HH:MM，没有则为null）、needRemind（是否需要提醒，boolean）
-
 请分析用户输入，返回JSON格式的结果，包含：
-- category: 主分类
+- category: 主分类（task/wish/input/output/diary 之一）
 - subCategory: 子分类
 - title: 简洁的标题（不超过20字）
 - description: 详细描述（保留重要信息，如推荐人、原因等）
 - deadline: 截止日期（如果提到了，格式为ISO 8601，否则为null）
 - tags: 相关标签数组（3个以内）
 - confidence: 分类置信度（0-1之间的小数）
-- scheduleDate: 日程日期（仅当category为schedule时填写，YYYY-MM-DD格式，否则为null）
-- scheduleTime: 日程时间（仅当category为schedule时填写，HH:MM格式，否则为null）
-- needRemind: 是否需要提醒（仅当category为schedule时填写，boolean，否则为false）
+- scheduleDate: 日程日期（如果内容提到了具体日期/时间，填写 YYYY-MM-DD，否则为null）
+- scheduleTime: 日程时间（如果提到了具体时间，填写 HH:MM，否则为null）
+- needRemind: 是否需要提醒（有明确时间点时建议为true，否则为false）
 
 如果输入内容完全无法归入以上任何分类（例如：无意义字符、纯表情、无法理解的内容），请将 category 设为 "draft"，subCategory 设为 "unclassified"，confidence 设为 0。
 只返回JSON，不要任何其他文字。`;
@@ -372,38 +374,19 @@ export const notesRouter = router({
 
       const targetDate = input.targetDate || new Date().toISOString().split('T')[0];
 
-      // 获取最近30天的日记（排除今天）
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-      const recentDiaries = await db
-        .select()
-        .from(diaries)
-        .where(
-          and(
-            eq(diaries.userId, ctx.user.id),
-            gte(diaries.date, thirtyDaysAgoStr),
-            lte(diaries.date, targetDate)
-          )
-        )
-        .orderBy(desc(diaries.date))
-        .limit(20);
-
-      // 获取最近的随手记（含日程类）
-      const recentNotes = await db
+      // 直接查询 scheduleDate = targetDate 的随手记（任何 category 都可以有日程日期）
+      const scheduledNotes = await db
         .select()
         .from(notes)
         .where(
           and(
             eq(notes.userId, ctx.user.id),
-            gte(notes.createdAt, thirtyDaysAgo)
+            eq(notes.scheduleDate, targetDate)
           )
         )
-        .orderBy(desc(notes.createdAt))
-        .limit(50);
+        .orderBy(notes.scheduleTime);
 
-      // 获取今天的日程
+      // 同时查询 schedules 表（手动添加的日程）
       const todaySchedules = await db
         .select()
         .from(schedules)
@@ -412,90 +395,51 @@ export const notesRouter = router({
             eq(schedules.userId, ctx.user.id),
             eq(schedules.date, targetDate)
           )
-        );
+        )
+        .orderBy(schedules.time);
 
-      if (recentDiaries.length === 0 && recentNotes.length === 0 && todaySchedules.length === 0) {
-        return { hints: [] };
-      }
+      const hints: Array<{ source: string; content: string; sourceDate: string; time?: string | null }> = [];
 
-      // 构建AI输入
-      const diaryContext = recentDiaries
-        .filter(d => d.date !== targetDate)
-        .slice(0, 10)
-        .map(d => `[${d.date}] ${d.content.slice(0, 200)}`)
-        .join('\n');
-
-      const notesContext = recentNotes
-        .filter(n => n.category === 'schedule' || (n.rawText && n.rawText.includes(targetDate.slice(5))))
-        .slice(0, 10)
-        .map(n => `[随手记] ${n.title || n.rawText}`)
-        .join('\n');
-
-      const schedulesContext = todaySchedules
-        .map(s => `[日程] ${s.time ? s.time + ' ' : ''}${s.title}`)
-        .join('\n');
-
-      if (!diaryContext && !notesContext && !schedulesContext) {
-        return { hints: [] };
-      }
-
-      try {
-        const response = await invokeLLM({
-          messages: [
-            {
-              role: 'system',
-              content: `你是CALLING应用的AI助手。请根据用户过去的日记和随手记，找出其中提到${targetDate}（今天）可能发生的事情。只提取明确提到这个日期或这一天的事件，不要臆测。如果没有找到相关内容，返回空数组。返回JSON格式，hints数组中每项包含：source（来源描述）、content（事件描述，不超过50字）、sourceDate（来源日期YYYY-MM-DD）。`,
-            },
-            {
-              role: 'user',
-              content: `目标日期：${targetDate}\n\n历史日记：\n${diaryContext || '无'}\n\n随手记：\n${notesContext || '无'}\n\n已有日程：\n${schedulesContext || '无'}\n\n请找出历史记录中提到${targetDate}这天可能发生的事情。`,
-            },
-          ],
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'today_hints',
-              strict: true,
-              schema: {
-                type: 'object',
-                properties: {
-                  hints: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        source: { type: 'string' },
-                        content: { type: 'string' },
-                        sourceDate: { type: 'string' },
-                      },
-                      required: ['source', 'content', 'sourceDate'],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ['hints'],
-                additionalProperties: false,
-              },
-            },
-          },
+      // 来自随手记的日程提示
+      for (const note of scheduledNotes) {
+        const categoryLabel: Record<string, string> = {
+          input: '输入',
+          output: '输出',
+          task: '任务',
+          wish: '愿望',
+          diary: '日记',
+        };
+        const label = categoryLabel[note.category || ''] || '随手记';
+        hints.push({
+          source: label,
+          content: `${note.scheduleTime ? note.scheduleTime + ' ' : ''}${note.title || note.rawText}`,
+          sourceDate: note.createdAt.toISOString().split('T')[0],
+          time: note.scheduleTime,
         });
+      }
 
-        const rawContent = response.choices[0]?.message?.content;
-        if (!rawContent) return { hints: [] };
-        const content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
-        const parsed = JSON.parse(content);
-        return { hints: parsed.hints || [] };
-      } catch (err) {
-        console.error('[AI] todayHints failed:', err);
-        // 降级：直接返回今天的日程作为提示
-        return {
-          hints: todaySchedules.map(s => ({
-            source: '日程记录',
+      // 来自 schedules 表的日程提示（去重：避免 AI 已自动创建的重复）
+      const noteScheduleTitles = new Set(scheduledNotes.map(n => n.title || n.rawText));
+      for (const s of todaySchedules) {
+        if (!noteScheduleTitles.has(s.title)) {
+          hints.push({
+            source: '日程',
             content: `${s.time ? s.time + ' ' : ''}${s.title}`,
             sourceDate: s.date,
-          })),
-        };
+            time: s.time,
+          });
+        }
       }
+
+      // 按时间排序（有时间的在前，无时间的在后）
+      hints.sort((a, b) => {
+        if (a.time && b.time) return a.time.localeCompare(b.time);
+        if (a.time) return -1;
+        if (b.time) return 1;
+        return 0;
+      });
+
+      return { hints };
     }),
 
   listDiaries: protectedProcedure.query(async ({ ctx }) => {
@@ -566,21 +510,26 @@ export const notesRouter = router({
         );
 
       // 查询完成待办日期及数量（按日期分组）
-      const completedRows = await db
-        .select({
-          date: sql<string>`DATE(${notes.completedAt})`.as('date'),
-          count: sql<number>`COUNT(*)`.as('count'),
-        })
-        .from(notes)
-        .where(
-          and(
-            eq(notes.userId, ctx.user.id),
-            eq(notes.completed, true),
-            gte(notes.completedAt, new Date(`${startDate}T00:00:00.000Z`)),
-            lte(notes.completedAt, new Date(`${endDate}T23:59:59.999Z`))
-          )
-        )
-        .groupBy(sql`DATE(${notes.completedAt})`);
+      // 使用 mysql2/promise 直接执行原始 SQL 绕过 only_full_group_by 限制
+      let completedRows: { date: string; count: number }[] = [];
+      try {
+        const pool = await getRawPool();
+        if (pool) {
+          const [rawRows] = await pool.query<any[]>(
+            `SELECT DATE(completedAt) AS \`date\`, COUNT(*) AS \`count\`
+             FROM notes
+             WHERE userId = ?
+               AND completed = 1
+               AND completedAt >= ?
+               AND completedAt <= ?
+             GROUP BY DATE(completedAt)`,
+            [ctx.user.id, `${startDate} 00:00:00`, `${endDate} 23:59:59`]
+          );
+          completedRows = rawRows.map((r: any) => ({ date: String(r.date), count: Number(r.count) }));
+        }
+      } catch (err: any) {
+        console.error('[calendarActivity] completedRows error:', err?.cause ?? err);
+      }
 
       return {
         loginDates: loginRows.map(r => r.date),
@@ -669,11 +618,13 @@ async function classifyNote(noteId: number, rawText: string, userId: number) {
         tags: parsed.tags,
         aiProcessed: true,
         aiRawResponse: content,
+        scheduleDate: parsed.scheduleDate || null,
+        scheduleTime: parsed.scheduleTime || null,
       })
       .where(eq(notes.id, noteId));
 
-    // 如果识别为日程类，自动创建日程记录
-    if (finalCategory === 'schedule' && parsed.scheduleDate) {
+    // 如果有日程日期，自动创建日程记录（任何 category 都可以有日程）
+    if (parsed.scheduleDate && finalCategory !== 'draft') {
       try {
         let remindAt: Date | undefined;
         if (parsed.needRemind) {
@@ -698,11 +649,12 @@ async function classifyNote(noteId: number, rawText: string, userId: number) {
     // 记录 AI 分类日志
     const syncedPages: string[] = [];
     if (finalCategory === 'task') syncedPages.push('world');
-    if (finalCategory === 'schedule') syncedPages.push('calendar', 'diary');
     if (finalCategory === 'input') syncedPages.push('input');
     if (finalCategory === 'output') syncedPages.push('output');
     if (finalCategory === 'diary') syncedPages.push('diary');
     if (finalCategory === 'wish') syncedPages.push('world');
+    // 有日程日期时同步到日历和日记
+    if (parsed.scheduleDate) { syncedPages.push('calendar'); if (!syncedPages.includes('diary')) syncedPages.push('diary'); }
     try {
       await db.insert(classificationLogs).values({
         userId,

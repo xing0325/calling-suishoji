@@ -71,6 +71,10 @@ export const notes = mysqlTable("notes", {
   aiRawResponse: text("aiRawResponse"),
   completed: boolean("completed").default(false).notNull(),
   completedAt: timestamp("completedAt"),
+  /** 日程日期（YYYY-MM-DD），任何 category 都可附带 */
+  scheduleDate: varchar("scheduleDate", { length: 10 }),
+  /** 日程时间（HH:MM），可为空 */
+  scheduleTime: varchar("scheduleTime", { length: 5 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

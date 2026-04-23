@@ -1,9 +1,9 @@
 # CALLING 产品交接文档
 
-> **版本**：v1.5（2026-04-21）
-> **当前 Checkpoint**：`c9163e91`
+> **版本**：v1.6（2026-04-23）
+> **当前 Checkpoint**：待保存后更新
 > **GitHub**：https://github.com/xing0325/calling-suishoji
-> **线上地址**：https://callingapp-bylg2wym.manus.space
+> **线上地址**：https://calling.manus.space
 > **编写目的**：供其他 coding agent 或开发者无缝衔接后续开发任务
 
 ---
@@ -103,9 +103,11 @@ calling/
 | id | int PK | 自增主键 |
 | userId | int | 外键 users.id |
 | rawText | text | 原始输入文本 |
-| category | varchar(32) | AI分类：task/wish/input/output/draft/schedule |
+| category | varchar(32) | AI分类：task/wish/input/output/draft |
 | tags | json | AI生成标签数组 |
 | deadline | varchar(10) | 截止日期 YYYY-MM-DD |
+| scheduleDate | varchar(10) | **[v1.6新增]** 日程日期 YYYY-MM-DD（任何 category 都可附带） |
+| scheduleTime | varchar(5) | **[v1.6新增]** 日程时间 HH:MM（可为空） |
 | completed | boolean | 是否完成 |
 | createdAt / updatedAt | timestamp | 时间戳 |
 
@@ -176,10 +178,10 @@ calling/
 
 ```typescript
 {
-  category: 'task' | 'wish' | 'input' | 'output' | 'draft' | 'schedule',
+  category: 'task' | 'wish' | 'input' | 'output' | 'draft',  // [v1.6] schedule 已移除
   tags: string[],           // 2-4个标签
   deadline: string | null,  // YYYY-MM-DD 格式
-  // schedule 类型专属字段：
+  // [v1.6] 任何 category 都可附带以下字段：
   scheduleDate: string | null,   // 日期 YYYY-MM-DD
   scheduleTime: string | null,   // 时间 HH:MM（可为空）
   scheduleTitle: string | null,  // 日程标题
@@ -189,11 +191,12 @@ calling/
 
 **分类规则**：
 - `task`：明确的待办事项（"我要去买菜"）
-- `wish`：愿望/目标（"我想学钢琴"）
+- `wish`：愿望/目标（"我想学钉琴"）
 - `input`：输入型内容（看了什么书/电影/文章）
 - `output`：输出型内容（写了什么/做了什么）
-- `schedule`：含有明确日期/时间的日程（"明天下午3点开会"）→ 自动创建 schedules 记录
 - `draft`：无法识别有效内容时归入草稿箱
+
+**[v1.6] schedule 属性变更**：`schedule` 不再是独立的 category，改为附加属性。任何 category 都可以附带 scheduleDate/scheduleTime，只要有 scheduleDate 就自动在 schedules 表创建日程记录。例："今晚七点看电影『美国x档案』"→ category=input + scheduleDate=2026-04-23 + scheduleTime=19:00
 
 ---
 
@@ -358,7 +361,7 @@ pnpm test
 
 ## 十三、代码规范
 
-- 所有数据库操作通过 Drizzle ORM，禁止原始 SQL
+- 所有数据库操作通过 Drizzle ORM，仅在无法用 ORM 表达的查询（如 only_full_group_by 限制）时才用 getRawPool() 执行原始 SQL
 - 所有 API 通过 tRPC，禁止直接 REST 路由
 - 所有后端调用通过 `trpc.*.useQuery/useMutation`，禁止 axios/fetch
 - 新增路由必须配套 Vitest 测试，运行 `pnpm test` 确保全部通过
@@ -367,8 +370,15 @@ pnpm test
 
 ---
 
-*文档由 Manus AI 生成，最后更新：2026-04-21 v1.5*
+*文档由 Manus AI 生成，最后更新：2026-04-23 v1.6*
 
+
+### v1.6 新增功能（2026-04-23）
+- **schedule 改为附加属性**：任何 category 都可附带 scheduleDate/scheduleTime，有时间则自动创建日程
+- **notes 表新增字段**：scheduleDate（VARCHAR 10）和 scheduleTime（VARCHAR 5）
+- **日记今日同步优化**：直接查询 notes.scheduleDate = 当天，不再依赖 AI 推断
+- **getRawPool()**：server/db.ts 新增，绕过 only_full_group_by 执行原始 SQL
+- **强制 Checklist**：Manus_HANDOFF_GUIDE.md 顶部新增每次修改后必须执行的 6 步规范
 
 ### v1.5 新增功能（2026-04-21）
 - **AI 分类精细化**：责任/输入/输出三类精确规则，避免误分类

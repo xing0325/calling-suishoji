@@ -1,0 +1,9 @@
+{
+  "query": "SELECT DATE(completedAt) AS `date`, COUNT(*) AS `count` FROM notes WHERE userId = 1 AND completed = 1 AND completedAt >= '2026-04-01 00:00:00' AND completedAt <= '2026-04-30 23:59:59' GROUP BY DATE(completedAt)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user en9jpAmPSYtVNEH.root --database Hx6Vc7zos58aXHv4FdFvwn --execute SELECT DATE(completedAt) AS `date`, COUNT(*) AS `count` FROM notes WHERE userId = 1 AND completed = 1 AND completedAt >= '2026-04-01 00:00:00' AND completedAt <= '2026-04-30 23:59:59' GROUP BY DATE(completedAt)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1517
+}

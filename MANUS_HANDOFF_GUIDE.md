@@ -4,6 +4,31 @@
 
 ---
 
+## 🔴 每次修改代码后必须执行的 Checklist（Agent 不得跳过）
+
+> **无论是修复 Bug、完成功能、还是任何代码改动，每次对话结束前必须按顺序执行以下全部步骤。缺少任何一步视为任务未完成。**
+
+```
+1. 运行 pnpm test，确认全部测试通过（不得有任何失败项）
+2. 更新 PRODUCT_HANDOFF.md：
+   - 版本号 +0.1
+   - 已完成功能打 ✅
+   - 新增 API 路由、数据库表变更
+3. 更新 MANUS_HANDOFF_GUIDE.md 第七节"当前版本状态"：
+   - 版本号、GitHub Commit、Manus Checkpoint
+   - 已完成功能列表
+4. git add . && git commit -m "描述本次改动" && git push github main --force-with-lease
+5. 保存 Manus 检查点（webdev_save_checkpoint）
+6. 告诉用户：已完成 GitHub 推送（附 commit hash）和检查点保存
+```
+
+**GitHub 仓库**：https://github.com/xing0325/calling-suishoji  
+**GitHub Token**：请向项目 Owner 索取（Token 以 `ghp_` 开头）
+
+> **为什么要这个 checklist**：之前的 Agent 在完成功能后忘记推送 GitHub 和更新文档，导致下一个 Agent 接手时代码和文档不同步。这个 checklist 是强制规范，每次必须执行。
+
+---
+
 ## 🚨 最重要的事（必读，不得跳过）
 
 > **Agent 请注意：你的唯一任务是"迁移部署"，不是"继续开发"。**
@@ -239,13 +264,17 @@ git checkout github/main -- .
 
 ---
 
-## 七、当前版本状态（最后更新：2026-04-22）
+## 七、当前版本状态（最后更新：2026-04-23）
 
-**版本**：v1.5 | **GitHub Commit**：`13a27f3` | **Manus Checkpoint**：`ed605299`
+**版本**：v1.6 | **GitHub Commit**：待推送后更新 | **Manus Checkpoint**：待保存后更新
 
 **已完成功能：**
 - 账号密码 + 邮箱验证码登录，JWT 30天持久化
-- 主页随手记 + AI 自动分类（task/wish/input/output/schedule/draft）
+- 主页随手记 + AI 自动分类（task/wish/input/output/draft）
+- **[v1.6]** schedule 改为附加属性：任何 category 都可附带 scheduleDate/scheduleTime，有时间则自动创建日程
+- **[v1.6]** notes 表新增 scheduleDate（VARCHAR 10）和 scheduleTime（VARCHAR 5）字段
+- **[v1.6]** 日记"看看今天我都做了些啥"改为直接查询 notes.scheduleDate = 当天，精准同步
+- **[v1.6]** server/db.ts 新增 getRawPool() 函数，绕过 only_full_group_by 执行原始 SQL
 - 草稿箱（AI 无法识别时自动归入）
 - 日历多视图（完成热力图/登录/日记/总览）
 - 日历双击添加日程（日期预填/时间可选/提醒开关）

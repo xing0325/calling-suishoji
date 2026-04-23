@@ -4,6 +4,7 @@ import type { TrpcContext } from "./_core/context";
 
 vi.mock("./db", () => ({
   getDb: vi.fn(),
+  getRawPool: vi.fn(),
 }));
 
 const mockUser = {
@@ -33,20 +34,17 @@ describe("notes.calendarActivity", () => {
   });
 
   it("returns empty arrays when no activity exists", async () => {
-    const { getDb } = await import("./db");
-    let whereCallCount = 0;
+    const { getDb, getRawPool } = await import("./db");
     const mockDb = {
       selectDistinct: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockImplementation(() => {
-        whereCallCount++;
-        if (whereCallCount <= 2) return Promise.resolve([]); // loginLogs + diaries
-        return { groupBy: vi.fn().mockResolvedValue([]) }; // notes completed
-      }),
-      groupBy: vi.fn().mockResolvedValue([]),
+      where: vi.fn().mockResolvedValue([]),
     };
     vi.mocked(getDb).mockResolvedValue(mockDb as any);
+    vi.mocked(getRawPool).mockResolvedValue({
+      query: vi.fn().mockResolvedValue([[]]),
+    } as any);
 
     const caller = appRouter.createCaller(createMockContext());
     const result = await caller.notes.calendarActivity({ year: 2026, month: 4 });
@@ -57,7 +55,7 @@ describe("notes.calendarActivity", () => {
   });
 
   it("returns login dates for the month", async () => {
-    const { getDb } = await import("./db");
+    const { getDb, getRawPool } = await import("./db");
     let queryIndex = 0;
     const mockDb = {
       selectDistinct: vi.fn().mockReturnThis(),
@@ -66,18 +64,15 @@ describe("notes.calendarActivity", () => {
       where: vi.fn().mockImplementation(() => {
         queryIndex++;
         if (queryIndex === 1) {
-          // loginLogs query
           return Promise.resolve([{ date: "2026-04-01" }, { date: "2026-04-05" }]);
         }
-        if (queryIndex === 2) {
-          // diaries query
-          return Promise.resolve([]);
-        }
-        // notes completed query - needs groupBy
-        return { groupBy: vi.fn().mockResolvedValue([]) };
+        return Promise.resolve([]);
       }),
     };
     vi.mocked(getDb).mockResolvedValue(mockDb as any);
+    vi.mocked(getRawPool).mockResolvedValue({
+      query: vi.fn().mockResolvedValue([[]]),
+    } as any);
 
     const caller = appRouter.createCaller(createMockContext());
     const result = await caller.notes.calendarActivity({ year: 2026, month: 4 });
@@ -88,25 +83,22 @@ describe("notes.calendarActivity", () => {
   });
 
   it("returns completed dates with counts", async () => {
-    const { getDb } = await import("./db");
-    let queryIndex = 0;
+    const { getDb, getRawPool } = await import("./db");
     const mockDb = {
       selectDistinct: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockImplementation(() => {
-        queryIndex++;
-        if (queryIndex <= 2) return Promise.resolve([]);
-        // notes completed query - needs groupBy
-        return {
-          groupBy: vi.fn().mockResolvedValue([
-            { date: "2026-04-10", count: 3 },
-            { date: "2026-04-15", count: 7 },
-          ])
-        };
-      }),
+      where: vi.fn().mockResolvedValue([]),
     };
     vi.mocked(getDb).mockResolvedValue(mockDb as any);
+    vi.mocked(getRawPool).mockResolvedValue({
+      query: vi.fn().mockResolvedValue([
+        [
+          { date: "2026-04-10", count: 3 },
+          { date: "2026-04-15", count: 7 },
+        ],
+      ]),
+    } as any);
 
     const caller = appRouter.createCaller(createMockContext());
     const result = await caller.notes.calendarActivity({ year: 2026, month: 4 });

@@ -1,9 +1,11 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: mysql.Pool | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -16,6 +18,25 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+// Returns a mysql2 promise pool for raw SQL queries.
+export async function getRawPool(): Promise<mysql.Pool | null> {
+  if (_pool === null || _pool === undefined) {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      console.warn("[Database] DATABASE_URL not set, cannot create raw pool");
+      return null;
+    }
+    try {
+      _pool = mysql.createPool(url);
+      console.log("[Database] Raw pool created successfully");
+    } catch (error) {
+      console.error("[Database] Failed to create raw pool:", error);
+      _pool = null;
+    }
+  }
+  return _pool;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
