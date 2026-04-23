@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `classification_logs` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `rawText` text NOT NULL, `category` varchar(64), `subCategory` varchar(64), `title` text, `confidence` varchar(10), `syncedTo` json, `aiRawResponse` text, `noteId` int, `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `classification_logs_id` PRIMARY KEY(`id`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user en9jpAmPSYtVNEH.root --database Hx6Vc7zos58aXHv4FdFvwn --execute CREATE TABLE IF NOT EXISTS `classification_logs` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `rawText` text NOT NULL, `category` varchar(64), `subCategory` varchar(64), `title` text, `confidence` varchar(10), `syncedTo` json, `aiRawResponse` text, `noteId` int, `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `classification_logs_id` PRIMARY KEY(`id`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1742
+}

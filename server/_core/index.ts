@@ -8,6 +8,8 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import cron from "node-cron";
+import { sendDueReminders } from "../routers/schedules";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -64,3 +66,9 @@ async function startServer() {
 }
 
 startServer().catch(console.error);
+
+// 每分钟检查到期提醒
+cron.schedule('* * * * *', () => {
+  sendDueReminders().catch((err) => console.error('[Reminder Cron]', err));
+});
+console.log('[Reminder Cron] 定时任务已启动');

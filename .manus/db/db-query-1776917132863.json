@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `streaks` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `currentStreak` int NOT NULL DEFAULT 0, `longestStreak` int NOT NULL DEFAULT 0, `lastActiveDate` varchar(10), `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `streaks_id` PRIMARY KEY(`id`), CONSTRAINT `streaks_userId_unique` UNIQUE(`userId`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user en9jpAmPSYtVNEH.root --database Hx6Vc7zos58aXHv4FdFvwn --execute CREATE TABLE IF NOT EXISTS `streaks` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `currentStreak` int NOT NULL DEFAULT 0, `longestStreak` int NOT NULL DEFAULT 0, `lastActiveDate` varchar(10), `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `streaks_id` PRIMARY KEY(`id`), CONSTRAINT `streaks_userId_unique` UNIQUE(`userId`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1618
+}

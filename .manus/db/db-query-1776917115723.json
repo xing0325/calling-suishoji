@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `notes` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `rawText` text NOT NULL, `category` varchar(64), `subCategory` varchar(64), `title` text, `description` text, `deadline` timestamp, `tags` json, `aiProcessed` boolean NOT NULL DEFAULT false, `aiRawResponse` text, `completed` boolean NOT NULL DEFAULT false, `completedAt` timestamp, `createdAt` timestamp NOT NULL DEFAULT (now()), `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `notes_id` PRIMARY KEY(`id`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user en9jpAmPSYtVNEH.root --database Hx6Vc7zos58aXHv4FdFvwn --execute CREATE TABLE IF NOT EXISTS `notes` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `rawText` text NOT NULL, `category` varchar(64), `subCategory` varchar(64), `title` text, `description` text, `deadline` timestamp, `tags` json, `aiProcessed` boolean NOT NULL DEFAULT false, `aiRawResponse` text, `completed` boolean NOT NULL DEFAULT false, `completedAt` timestamp, `createdAt` timestamp NOT NULL DEFAULT (now()), `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `notes_id` PRIMARY KEY(`id`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1664
+}

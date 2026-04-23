@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `schedules` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `date` varchar(10) NOT NULL, `time` varchar(5), `title` text NOT NULL, `description` text, `remindEnabled` boolean NOT NULL DEFAULT false, `remindAt` timestamp, `reminded` boolean NOT NULL DEFAULT false, `createdAt` timestamp NOT NULL DEFAULT (now()), `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `schedules_id` PRIMARY KEY(`id`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user en9jpAmPSYtVNEH.root --database Hx6Vc7zos58aXHv4FdFvwn --execute CREATE TABLE IF NOT EXISTS `schedules` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `date` varchar(10) NOT NULL, `time` varchar(5), `title` text NOT NULL, `description` text, `remindEnabled` boolean NOT NULL DEFAULT false, `remindAt` timestamp, `reminded` boolean NOT NULL DEFAULT false, `createdAt` timestamp NOT NULL DEFAULT (now()), `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `schedules_id` PRIMARY KEY(`id`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1634
+}

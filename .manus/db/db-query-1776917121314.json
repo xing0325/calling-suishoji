@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `push_subscriptions` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `endpoint` text NOT NULL, `keys` json NOT NULL, `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `push_subscriptions_id` PRIMARY KEY(`id`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user en9jpAmPSYtVNEH.root --database Hx6Vc7zos58aXHv4FdFvwn --execute CREATE TABLE IF NOT EXISTS `push_subscriptions` (`id` int AUTO_INCREMENT NOT NULL, `userId` int NOT NULL, `endpoint` text NOT NULL, `keys` json NOT NULL, `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `push_subscriptions_id` PRIMARY KEY(`id`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1646
+}

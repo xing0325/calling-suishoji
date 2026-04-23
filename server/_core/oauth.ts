@@ -1,6 +1,10 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
+import { getDb } from "../db";
+import { loginLogs } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
+import { users } from "../../drizzle/schema";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -35,6 +39,18 @@ export function registerOAuthRoutes(app: Express) {
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
+
+      // 记录登录日志
+      try {
+        const dbConn = await getDb();
+        if (dbConn) {
+          const [userRow] = await dbConn.select({ id: users.id }).from(users).where(eq(users.openId, userInfo.openId)).limit(1);
+          if (userRow) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            await dbConn.insert(loginLogs).values({ userId: userRow.id, date: todayStr }).catch(() => {});
+          }
+        }
+      } catch { /* 登录日志写入失败不影响主流程 */ }
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",

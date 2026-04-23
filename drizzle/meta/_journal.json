@@ -1,5 +1,55 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1776687158564,
+      "tag": "0000_goofy_ser_duncan",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1776687371093,
+      "tag": "0001_medical_vindicator",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1776689386538,
+      "tag": "0002_empty_wendell_vaughn",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1776742586488,
+      "tag": "0003_steady_mentor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1776744474394,
+      "tag": "0004_massive_landau",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1776765375731,
+      "tag": "0005_fair_leper_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1776917076448,
+      "tag": "0006_panoramic_bromley",
+      "breakpoints": true
+    }
+  ]
 }

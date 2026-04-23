@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `email_verifications` (`id` int AUTO_INCREMENT NOT NULL, `email` varchar(320) NOT NULL, `code` varchar(8) NOT NULL, `expiresAt` timestamp NOT NULL, `used` boolean NOT NULL DEFAULT false, `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `email_verifications_id` PRIMARY KEY(`id`))",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user en9jpAmPSYtVNEH.root --database Hx6Vc7zos58aXHv4FdFvwn --execute CREATE TABLE IF NOT EXISTS `email_verifications` (`id` int AUTO_INCREMENT NOT NULL, `email` varchar(320) NOT NULL, `code` varchar(8) NOT NULL, `expiresAt` timestamp NOT NULL, `used` boolean NOT NULL DEFAULT false, `createdAt` timestamp NOT NULL DEFAULT (now()), CONSTRAINT `email_verifications_id` PRIMARY KEY(`id`))",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1651
+}
