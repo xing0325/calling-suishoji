@@ -266,7 +266,7 @@ git checkout github/main -- .
 
 ## 七、当前版本状态（最后更新：2026-04-23）
 
-**版本**：v1.6 | **GitHub Commit**：`a3527f6` | **Manus Checkpoint**：待保存后更新
+**版本**：v1.6 | **GitHub Commit**：`a3527f6` | **Manus Checkpoint**：`57af53ef`
 
 **已完成功能：**
 - 账号密码 + 邮箱验证码登录，JWT 30天持久化

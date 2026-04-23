@@ -1,7 +1,7 @@
 # CALLING 产品交接文档
 
 > **版本**：v1.6（2026-04-23）
-> **当前 Checkpoint**：待保存后更新
+> **当前 Checkpoint**：`57af53ef`
 > **GitHub**：https://github.com/xing0325/calling-suishoji
 > **线上地址**：https://calling.manus.space
 > **编写目的**：供其他 coding agent 或开发者无缝衔接后续开发任务
