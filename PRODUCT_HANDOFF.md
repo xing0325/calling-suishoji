@@ -1,8 +1,9 @@
 ﻿# CALLING 产品交接文档
 
-> **版本**：v1.7（2026-04-23）
+> **版本**：v1.8（2026-04-23）
 > **当前 Checkpoint**：`57af53ef`
 > **最近更新（v1.7）**：Windows 本地开发支持——package.json dev 脚本改用 cross-env，可在 Windows/Claude Code 环境预览运行
+> **最近更新（v1.8）**：输入/输出页面 UI 重写为 DialPicker 组件，上下分栏布局，上半展示笔记卡片，下半为弧形拨盘+刻度盘，左右滑动切换分类，中心按钮进入详情页
 > **GitHub**：https://github.com/xing0325/calling-suishoji
 > **线上地址**：https://calling.manus.space
 > **编写目的**：供其他 coding agent 或开发者无缝衔接后续开发任务

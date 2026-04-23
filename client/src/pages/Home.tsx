@@ -14,7 +14,7 @@ import {
   History,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import RotaryDial from '@/components/RotaryDial';
+import DialPicker from '@/components/DialPicker';
 import WorldCalling from '@/components/WorldCalling';
 import DiaryEditor, { DiaryEntry } from '@/components/DiaryEditor';
 import CalendarView from '@/components/CalendarView';
@@ -420,33 +420,21 @@ export default function Home() {
           <WorldCalling />
         </div>
 
-        {/* 输入的Calling页面（月亮表盘） */}
-        <div className="w-screen flex-shrink-0 pt-6 px-4 space-y-6 overflow-y-auto pb-24">
-          <div>
-            <h2 className="text-xl font-bold" style={{ fontFamily: 'Poppins, sans-serif' }}>
-              输入的Calling
-            </h2>
-            <p className="text-xs text-muted-foreground mt-1">📥 外界信息 · 月亮表盘</p>
-          </div>
-          <RotaryDial
+        {/* 输入的Calling页面 */}
+        <div className="w-screen flex-shrink-0" style={{ height: 'calc(100vh - 56px)' }}>
+          <DialPicker
+            mainCategory="input"
             items={moonItems}
-            type="moon"
-            onSelect={(item) => setSelectedInnerCategory(`input-${item.id}`)}
+            onEnter={(key) => setSelectedInnerCategory(key)}
           />
         </div>
 
-        {/* 输出的Calling页面（太阳表盘） */}
-        <div className="w-screen flex-shrink-0 pt-6 px-4 space-y-6 overflow-y-auto pb-24">
-          <div>
-            <h2 className="text-xl font-bold" style={{ fontFamily: 'Poppins, sans-serif' }}>
-              输出的Calling
-            </h2>
-            <p className="text-xs text-muted-foreground mt-1">📤 灵感与创作 · 太阳表盘</p>
-          </div>
-          <RotaryDial
+        {/* 输出的Calling页面 */}
+        <div className="w-screen flex-shrink-0" style={{ height: 'calc(100vh - 56px)' }}>
+          <DialPicker
+            mainCategory="output"
             items={sunItems}
-            type="sun"
-            onSelect={(item) => setSelectedInnerCategory(`output-${item.id}`)}
+            onEnter={(key) => setSelectedInnerCategory(key)}
           />
         </div>
       </div>
