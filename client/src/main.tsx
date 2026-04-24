@@ -11,6 +11,8 @@ import "./index.css";
 const queryClient = new QueryClient();
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
+  // 游客模式不重定向到 OAuth
+  if (localStorage.getItem('calling-guest') === '1') return;
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 

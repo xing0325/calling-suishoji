@@ -47,7 +47,7 @@ export default function Home() {
 
   // 从数据库读取连胜数据
   const { data: streakData } = trpc.notes.getStreak.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !isGuest,
   });
   const streak = streakData?.currentStreak ?? 0;
   const [swipeState, setSwipeState] = useState<SwipeState>({
