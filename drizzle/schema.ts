@@ -7,6 +7,7 @@ import {
   varchar,
   boolean,
   json,
+  float,
 } from "drizzle-orm/mysql-core";
 
 /**
@@ -75,6 +76,10 @@ export const notes = mysqlTable("notes", {
   scheduleDate: varchar("scheduleDate", { length: 10 }),
   /** 日程时间（HH:MM），可为空 */
   scheduleTime: varchar("scheduleTime", { length: 5 }),
+  /** 重要程度评分（1.0-5.0），AI 评分或用户在责任页手动设置；≥3.5 显示在首页 */
+  importanceScore: float("importanceScore"),
+  /** 是否置顶到首页（用户在信息库中明确提到"放到首页"时由 AI 标记） */
+  pinToHome: boolean("pinToHome").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

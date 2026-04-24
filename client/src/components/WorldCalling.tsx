@@ -25,6 +25,7 @@ const TaskGroupCard: React.FC<TaskGroupCardProps> = ({ group }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
+  const [importanceScore, setImportanceScore] = useState<number | null>(null);
   const { isAuthenticated } = useAuth();
 
   const { data: items = [], refetch } = trpc.notes.list.useQuery(
@@ -47,6 +48,7 @@ const TaskGroupCard: React.FC<TaskGroupCardProps> = ({ group }) => {
     onSuccess: () => {
       refetch();
       setNewTaskText('');
+      setImportanceScore(null);
       setShowAddModal(false);
       toast.success('已添加，AI正在分类...');
     },
@@ -187,9 +189,43 @@ const TaskGroupCard: React.FC<TaskGroupCardProps> = ({ group }) => {
               className="w-full bg-background border border-border rounded-lg p-3 text-sm text-foreground placeholder-muted-foreground resize-none focus:outline-none focus:border-primary/50 min-h-24"
               autoFocus
             />
+
+            {/* 重要程度热力图 */}
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-muted-foreground">重要程度</span>
+                <span className="text-xs" style={{ color: importanceScore && importanceScore >= 3.5 ? '#f97316' : '#6b7280' }}>
+                  {importanceScore ? `${importanceScore.toFixed(1)} 级${importanceScore >= 3.5 ? ' · 将显示在首页' : ''}` : '不设置（AI 自动判断）'}
+                </span>
+              </div>
+              <div className="flex gap-1.5">
+                {[1, 2, 3, 4, 5].map((level) => {
+                  const colors = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444'];
+                  const labels = ['低', '一般', '中', '高', '极高'];
+                  const isSelected = importanceScore === level;
+                  return (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => setImportanceScore(isSelected ? null : level)}
+                      className="flex-1 rounded-md py-2 flex flex-col items-center gap-0.5 transition-all"
+                      style={{
+                        background: isSelected ? colors[level - 1] : 'rgba(255,255,255,0.05)',
+                        border: `1px solid ${isSelected ? colors[level - 1] : 'rgba(255,255,255,0.1)'}`,
+                        opacity: importanceScore && !isSelected ? 0.45 : 1,
+                      }}
+                    >
+                      <div className="w-full h-1.5 rounded-full" style={{ background: colors[level - 1], opacity: isSelected ? 1 : 0.5 }} />
+                      <span className="text-xs" style={{ color: isSelected ? 'white' : '#9ca3af' }}>{labels[level - 1]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="flex gap-2 mt-3">
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => { setShowAddModal(false); setImportanceScore(null); }}
                 className="flex-1 py-2 border border-border rounded-lg text-sm text-muted-foreground hover:bg-secondary transition-colors"
               >
                 取消
@@ -197,7 +233,10 @@ const TaskGroupCard: React.FC<TaskGroupCardProps> = ({ group }) => {
               <button
                 onClick={() => {
                   if (newTaskText.trim()) {
-                    createNote.mutate({ rawText: newTaskText.trim() });
+                    createNote.mutate({
+                      rawText: newTaskText.trim(),
+                      ...(importanceScore !== null ? { importanceScore } : {}),
+                    });
                   }
                 }}
                 disabled={!newTaskText.trim() || createNote.isPending}

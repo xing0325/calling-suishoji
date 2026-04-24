@@ -21,6 +21,7 @@ import CalendarView from '@/components/CalendarView';
 import InnerCallingDetail from '@/components/InnerCallingDetail';
 import { getDatesWithCallings, getStreakDays, initializeStorage } from '@/lib/storage';
 import WeeklyInsight from '@/components/WeeklyInsight';
+import UrgentTasksView from '@/components/UrgentTasksView';
 
 type TabType = 'calendar' | 'diary' | 'home' | 'world' | 'input' | 'output';
 
@@ -381,37 +382,9 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 快速导航 */}
-          <div className="space-y-2">
-            <h2 className="text-xs font-semibold" style={{ fontFamily: 'Poppins, sans-serif' }}>
-              快速导航
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => handleTabChange('world')}
-                className="bg-card border border-border rounded-lg p-3 hover:bg-secondary hover:border-primary/50 transition-all duration-300 text-left active:scale-95 shadow-sm hover:shadow-md"
-              >
-                <Globe className="w-4 h-4 text-primary mb-1" />
-                <p className="text-xs font-medium">责任的Calling</p>
-                <p className="text-xs text-muted-foreground mt-0.5">对外负责</p>
-              </button>
-              <button
-                onClick={() => handleTabChange('input')}
-                className="bg-card border border-border rounded-lg p-3 hover:bg-secondary hover:border-primary/50 transition-all duration-300 text-left active:scale-95 shadow-sm hover:shadow-md"
-              >
-                <Download className="w-4 h-4 text-primary mb-1" />
-                <p className="text-xs font-medium">输入的Calling</p>
-                <p className="text-xs text-muted-foreground mt-0.5">外界信息</p>
-              </button>
-              <button
-                onClick={() => handleTabChange('output')}
-                className="bg-card border border-border rounded-lg p-3 hover:bg-secondary hover:border-primary/50 transition-all duration-300 text-left active:scale-95 shadow-sm hover:shadow-md"
-              >
-                <Upload className="w-4 h-4 text-primary mb-1" />
-                <p className="text-xs font-medium">输出的Calling</p>
-                <p className="text-xs text-muted-foreground mt-0.5">灵感与创作</p>
-              </button>
-            </div>
+          {/* 紧急任务视图 */}
+          <div className="bg-card border border-border rounded-lg p-3 shadow-sm">
+            <UrgentTasksView />
           </div>
         </div>
 

@@ -190,7 +190,14 @@ pnpm install
 
 ## 七、当前版本状态（最后更新：2026-04-23）
 
-**版本**：v1.6 | **GitHub Commit**：`2e66788` | **Manus Checkpoint**：`57af53ef`
+**版本**：v2.0 | **GitHub Commit**：`pending` | **Manus Checkpoint**：`57af53ef`
+
+**v2.0 迁移必做：运行数据库迁移**
+```sql
+ALTER TABLE `notes` ADD `importanceScore` float;
+ALTER TABLE `notes` ADD `pinToHome` boolean NOT NULL DEFAULT false;
+```
+用 `webdev_execute_sql` 执行以上两条 SQL（如报"列已存在"可跳过）。
 
 **已完成功能：**
 - 账号密码 + 邮箱验证码登录，JWT 30天持久化

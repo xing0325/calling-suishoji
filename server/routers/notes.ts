@@ -3,7 +3,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { getDb, getRawPool } from "../db";
 import { notes, diaries, streaks, loginLogs, schedules, classificationLogs } from "../../drizzle/schema";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, sql, isNull, isNotNull } from "drizzle-orm";
 
 // 已知的有效分类
 const VALID_CATEGORIES = ['task', 'wish', 'input', 'output', 'diary'];
@@ -82,6 +82,8 @@ const CLASSIFY_SYSTEM_PROMPT = `你是CALLING应用的智能助手，专门负�
 - scheduleDate: 日程日期（如果内容提到了具体日期/时间，填写 YYYY-MM-DD，否则为null）
 - scheduleTime: 日程时间（如果提到了具体时间，填写 HH:MM，否则为null）
 - needRemind: 是否需要提醒（有明确时间点时建议为true，否则为false）
+- importanceScore: 重要程度（1.0-5.0浮点数，仅当内容中明确表达出某件事"很重要/紧急/必须完成/关键"等语义时才给出分数，否则为null）。参考：5.0=极度重要/紧急，4.0=很重要，3.5=较重要，3.0以下=普通。
+- pinToHome: 如果用户明确提到"放到首页"、"重点关注"、"置顶"、"一定要放在显眼位置"等语义，设为true，否则false。
 
 如果输入内容完全无法归入以上任何分类（例如：无意义字符、纯表情、无法理解的内容），请将 category 设为 "draft"，subCategory 设为 "unclassified"，confidence 设为 0。
 只返回JSON，不要任何其他文字。`;
@@ -89,7 +91,10 @@ const CLASSIFY_SYSTEM_PROMPT = `你是CALLING应用的智能助手，专门负�
 export const notesRouter = router({
   // 提交随手记并AI分类
   create: protectedProcedure
-    .input(z.object({ rawText: z.string().min(1).max(2000) }))
+    .input(z.object({
+      rawText: z.string().min(1).max(2000),
+      importanceScore: z.number().min(1).max(5).optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -99,6 +104,7 @@ export const notesRouter = router({
         userId: ctx.user.id,
         rawText: input.rawText,
         aiProcessed: false,
+        importanceScore: input.importanceScore ?? null,
       });
 
       const noteId = (insertResult as any).insertId;
@@ -538,6 +544,51 @@ export const notesRouter = router({
       };
     }),
 
+  // 获取首页优先任务（紧急或重要的任务）
+  listPriorityTasks: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const fiveDaysLater = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+      return db
+        .select()
+        .from(notes)
+        .where(
+          and(
+            eq(notes.userId, ctx.user.id),
+            eq(notes.category, 'task'),
+            eq(notes.completed, false),
+            or(
+              and(isNotNull(notes.deadline), lte(notes.deadline, fiveDaysLater)),
+              sql`${notes.importanceScore} >= 3.5`,
+              eq(notes.pinToHome, true),
+            )
+          )
+        )
+        .orderBy(desc(notes.createdAt));
+    }),
+
+  // 更新任务的重要程度或截止日期（拖入四象限时调用）
+  updateImportance: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      importanceScore: z.number().min(1).max(5).nullable().optional(),
+      deadline: z.string().nullable().optional(), // ISO date string or null
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const updateData: Record<string, unknown> = {};
+      if (input.importanceScore !== undefined) updateData.importanceScore = input.importanceScore;
+      if (input.deadline !== undefined) updateData.deadline = input.deadline ? new Date(input.deadline) : null;
+      if (Object.keys(updateData).length === 0) return { success: true };
+      await db
+        .update(notes)
+        .set(updateData)
+        .where(and(eq(notes.id, input.id), eq(notes.userId, ctx.user.id)));
+      return { success: true };
+    }),
+
   // 获取 AI 分类历史日志
   listClassificationLogs: protectedProcedure
     .input(z.object({
@@ -587,8 +638,10 @@ async function classifyNote(noteId: number, rawText: string, userId: number) {
               scheduleDate: { type: ["string", "null"] },
               scheduleTime: { type: ["string", "null"] },
               needRemind: { type: "boolean" },
+              importanceScore: { type: ["number", "null"] },
+              pinToHome: { type: "boolean" },
             },
-            required: ["category", "subCategory", "title", "description", "deadline", "tags", "confidence", "scheduleDate", "scheduleTime", "needRemind"],
+            required: ["category", "subCategory", "title", "description", "deadline", "tags", "confidence", "scheduleDate", "scheduleTime", "needRemind", "importanceScore", "pinToHome"],
             additionalProperties: false,
           },
         },
@@ -620,6 +673,8 @@ async function classifyNote(noteId: number, rawText: string, userId: number) {
         aiRawResponse: content,
         scheduleDate: parsed.scheduleDate || null,
         scheduleTime: parsed.scheduleTime || null,
+        importanceScore: typeof parsed.importanceScore === 'number' ? parsed.importanceScore : null,
+        pinToHome: !!parsed.pinToHome,
       })
       .where(eq(notes.id, noteId));
 
