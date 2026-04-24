@@ -96,6 +96,8 @@ export default function Home() {
     if (isAnimating) return;
     const target = e.target as HTMLElement;
     if (target.closest('button')) return;
+    // 如果触摸目标在可拖拽元素内，不启动页面滑动（避免与四象限拖拽冲突）
+    if (target.closest('[data-draggable="true"]')) return;
 
     const startX = e.targetTouches[0].clientX;
     const startY = e.targetTouches[0].clientY;

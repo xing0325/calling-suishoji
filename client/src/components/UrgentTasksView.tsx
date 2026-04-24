@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { toast } from 'sonner';
@@ -28,11 +28,11 @@ function classify(task: Note): Quadrant | Box {
   if (hasScore && hasDeadline) {
     if (isImportant && isUrgent) return 'q1';
     if (isImportant && !isUrgent) return 'q2';
-    return 'q3'; // has deadline + score but not important
+    return 'q3';
   }
-  if (hasScore && !hasDeadline) return 'b1'; // important, no deadline
-  if (!hasScore && hasDeadline && isUrgent) return 'b2'; // urgent, no score
-  return 'b3'; // only pinToHome or partial info
+  if (hasScore && !hasDeadline) return 'b1';
+  if (!hasScore && hasDeadline && isUrgent) return 'b2';
+  return 'b3';
 }
 
 function daysLeft(deadline: Date | null): string {
@@ -57,20 +57,44 @@ function ScoreDot({ score }: { score: number | null }) {
 interface TaskChipProps {
   task: Note;
   draggable?: boolean;
-  onDragStart?: (e: React.DragEvent, taskId: number) => void;
+  onTouchDragStart?: (taskId: number, e: React.TouchEvent) => void;
   onComplete?: (id: number) => void;
   compact?: boolean;
 }
 
-function TaskChip({ task, draggable, onDragStart, onComplete, compact }: TaskChipProps) {
+function TaskChip({ task, draggable, onTouchDragStart, onComplete, compact }: TaskChipProps) {
   const label = task.title || task.rawText.slice(0, 30);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pressing, setPressing] = useState(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!draggable || !onTouchDragStart) return;
+    // Long-press to start drag (300ms)
+    longPressTimer.current = setTimeout(() => {
+      setPressing(false);
+      onTouchDragStart(task.id, e);
+    }, 300);
+    setPressing(true);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    setPressing(false);
+  };
+
   return (
     <div
-      draggable={draggable}
-      onDragStart={draggable && onDragStart ? (e) => onDragStart(e, task.id) : undefined}
+      data-draggable={draggable ? 'true' : undefined}
+      data-task-id={task.id}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       style={{
-        background: '#13102a',
-        border: '0.5px solid #2a2450',
+        background: pressing ? '#1e1a3a' : '#13102a',
+        border: `0.5px solid ${pressing ? '#534AB7' : '#2a2450'}`,
         borderRadius: compact ? 8 : 10,
         padding: compact ? '5px 8px' : '8px 10px',
         cursor: draggable ? 'grab' : 'default',
@@ -80,6 +104,8 @@ function TaskChip({ task, draggable, onDragStart, onComplete, compact }: TaskChi
         marginBottom: compact ? 4 : 6,
         userSelect: 'none',
         opacity: task.completed ? 0.5 : 1,
+        touchAction: draggable ? 'none' : 'auto',
+        transition: 'background .15s, border-color .15s',
       }}
     >
       {onComplete && (
@@ -105,18 +131,13 @@ function TaskChip({ task, draggable, onDragStart, onComplete, compact }: TaskChi
           </div>
         )}
       </div>
+      {draggable && (
+        <span style={{ fontSize: 10, color: '#3a3660', marginTop: 1, flexShrink: 0 }}>⠿</span>
+      )}
     </div>
   );
 }
 
-/* Standard Eisenhower matrix layout:
- *   q2 (重要不紧急)  |  q1 (重要且紧急)
- *   -----------------+-----------------
- *   q4 (不重要不紧急) |  q3 (紧急不重要)
- *
- * q4 is not used (tasks there wouldn't appear in priority list),
- * so we render a muted placeholder in the bottom-left cell.
- */
 const QUADRANT_GRID = [
   { id: 'q2' as const, label: '重要不紧急', sub: '计划', color: '#7C3AED', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.3)', activeBorder: 'rgba(124,58,237,0.7)' },
   { id: 'q1' as const, label: '重要且紧急', sub: '立即做', color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.35)', activeBorder: 'rgba(239,68,68,0.75)' },
@@ -137,16 +158,35 @@ interface DropConfirm {
   deadline: string | null;
 }
 
+// Touch drag ghost overlay
+function DragGhost({ label, x, y }: { label: string; x: number; y: number }) {
+  return (
+    <div style={{
+      position: 'fixed', left: x - 60, top: y - 20, zIndex: 100,
+      background: '#534AB7', color: 'white', fontSize: 11, fontWeight: 600,
+      padding: '5px 12px', borderRadius: 8, pointerEvents: 'none',
+      boxShadow: '0 4px 16px rgba(83,74,183,0.5)', opacity: 0.9,
+      maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    }}>
+      {label}
+    </div>
+  );
+}
+
 export default function UrgentTasksView() {
   const { isAuthenticated, isGuest } = useAuth();
   const [view, setView] = useState<'card' | 'quadrant'>('card');
   const [expanded, setExpanded] = useState(false);
   const [askOnDrop, setAskOnDrop] = useState(() => localStorage.getItem('calling-ask-on-drop') === '1');
-  const [dragTaskId, setDragTaskId] = useState<number | null>(null);
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
   const [dropConfirm, setDropConfirm] = useState<DropConfirm | null>(null);
   const [confirmImportance, setConfirmImportance] = useState<number>(4.0);
   const [confirmDeadlineDays, setConfirmDeadlineDays] = useState<number>(3);
+
+  // Touch drag state
+  const [touchDrag, setTouchDrag] = useState<{ taskId: number; x: number; y: number; label: string } | null>(null);
+  const quadrantRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
   const utils = trpc.useUtils();
 
   const { data: tasks = [], isLoading } = trpc.notes.listPriorityTasks.useQuery(undefined, {
@@ -171,27 +211,69 @@ export default function UrgentTasksView() {
     toggleComplete.mutate({ id, completed: !task.completed });
   };
 
-  const handleDragStart = (e: React.DragEvent, taskId: number) => {
-    e.dataTransfer.effectAllowed = 'move';
-    setDragTaskId(taskId);
-  };
-
-  const handleDragOver = useCallback((e: React.DragEvent, quadrantId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverQuadrant(quadrantId);
+  // Find which quadrant a point is over
+  const findQuadrantAt = useCallback((x: number, y: number): Quadrant | null => {
+    const entries = Array.from(quadrantRefs.current.entries());
+    for (const [qId, el] of entries) {
+      const rect = el.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        return qId as Quadrant;
+      }
+    }
+    return null;
   }, []);
 
-  const handleDragLeave = useCallback(() => {
-    setDragOverQuadrant(null);
-  }, []);
+  // Touch drag handlers
+  const handleTouchDragStart = useCallback((taskId: number, _e: React.TouchEvent) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const label = (task as Note).title || (task as Note).rawText.slice(0, 20);
+    // Vibrate for haptic feedback if available
+    if (navigator.vibrate) navigator.vibrate(30);
+    setTouchDrag({ taskId, x: 0, y: 0, label });
+  }, [tasks]);
 
-  const handleDrop = useCallback((e: React.DragEvent, quadrant: Quadrant) => {
-    e.preventDefault();
-    setDragOverQuadrant(null);
-    if (dragTaskId === null) return;
-    const task = tasks.find(t => t.id === dragTaskId);
-    if (!task) { setDragTaskId(null); return; }
+  // Global touch move/end for drag
+  useEffect(() => {
+    if (!touchDrag) return;
+
+    const handleMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      setTouchDrag(prev => prev ? { ...prev, x: touch.clientX, y: touch.clientY } : null);
+      const q = findQuadrantAt(touch.clientX, touch.clientY);
+      setDragOverQuadrant(q);
+    };
+
+    const handleEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      const q = findQuadrantAt(touch.clientX, touch.clientY);
+      if (q && touchDrag) {
+        executeDrop(touchDrag.taskId, q);
+      }
+      setTouchDrag(null);
+      setDragOverQuadrant(null);
+    };
+
+    const handleCancel = () => {
+      setTouchDrag(null);
+      setDragOverQuadrant(null);
+    };
+
+    document.addEventListener('touchmove', handleMove, { passive: false });
+    document.addEventListener('touchend', handleEnd);
+    document.addEventListener('touchcancel', handleCancel);
+
+    return () => {
+      document.removeEventListener('touchmove', handleMove);
+      document.removeEventListener('touchend', handleEnd);
+      document.removeEventListener('touchcancel', handleCancel);
+    };
+  }, [touchDrag, findQuadrantAt]);
+
+  const executeDrop = useCallback((taskId: number, quadrant: Quadrant) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
 
     const needsDeadline = (quadrant === 'q1' || quadrant === 'q3') && !task.deadline;
     const needsImportance = (quadrant === 'q1' || quadrant === 'q2') && (task.importanceScore === null || task.importanceScore < 3.5);
@@ -202,7 +284,7 @@ export default function UrgentTasksView() {
       setConfirmImportance(defaultImportance);
       setConfirmDeadlineDays(3);
       setDropConfirm({
-        task,
+        task: task as Note,
         quadrant,
         importanceScore: needsImportance ? defaultImportance : null,
         deadline: needsDeadline ? defaultDeadline : null,
@@ -214,8 +296,7 @@ export default function UrgentTasksView() {
         ...(needsDeadline ? { deadline: defaultDeadline } : {}),
       });
     }
-    setDragTaskId(null);
-  }, [dragTaskId, tasks, askOnDrop, updateImportance]);
+  }, [tasks, askOnDrop, updateImportance]);
 
   const confirmDrop = () => {
     if (!dropConfirm) return;
@@ -248,7 +329,6 @@ export default function UrgentTasksView() {
     return <div style={{ padding: 16, color: '#534AB7', fontSize: 12, textAlign: 'center' }}>加载中…</div>;
   }
 
-  // Categorize tasks
   const byGroup: Record<string, Note[]> = { q1: [], q2: [], q3: [], b1: [], b2: [], b3: [] };
   tasks.forEach(t => byGroup[classify(t as Note)].push(t as Note));
 
@@ -260,6 +340,11 @@ export default function UrgentTasksView() {
 
   return (
     <div>
+      {/* Touch drag ghost */}
+      {touchDrag && touchDrag.x > 0 && (
+        <DragGhost label={touchDrag.label} x={touchDrag.x} y={touchDrag.y} />
+      )}
+
       {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -327,10 +412,9 @@ export default function UrgentTasksView() {
         </div>
       )}
 
-      {/* QUADRANT VIEW — standard 2×2 Eisenhower matrix */}
+      {/* QUADRANT VIEW */}
       {view === 'quadrant' && (
         <div>
-          {/* Axis labels */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, padding: '0 2px' }}>
             <span style={{ fontSize: 9, color: '#534AB7', letterSpacing: '0.08em' }}>↑ 重要</span>
             <span style={{ fontSize: 9, color: '#534AB7', letterSpacing: '0.08em' }}>紧急 →</span>
@@ -346,17 +430,17 @@ export default function UrgentTasksView() {
               return (
                 <div
                   key={idx}
-                  onDragOver={qId ? (e) => handleDragOver(e, qId) : undefined}
-                  onDragLeave={qId ? handleDragLeave : undefined}
-                  onDrop={qId ? (e) => handleDrop(e, qId) : undefined}
+                  ref={qId ? (el) => { if (el) quadrantRefs.current.set(qId, el); } : undefined}
+                  data-quadrant={qId || undefined}
                   style={{
                     minHeight: 80,
                     borderRadius: 10,
-                    border: `1px solid ${isDropTarget ? q.activeBorder : q.border}`,
-                    background: isDropTarget ? `${q.bg.replace('0.08', '0.18').replace('0.02', '0.06')}` : q.bg,
+                    border: `1.5px solid ${isDropTarget ? q.activeBorder : q.border}`,
+                    background: isDropTarget ? `${q.bg.replace('0.08', '0.22').replace('0.02', '0.08')}` : q.bg,
                     padding: '8px 8px 4px',
-                    transition: 'border-color .15s, background .15s, box-shadow .15s',
-                    boxShadow: isDropTarget ? `0 0 12px ${q.activeBorder}` : 'none',
+                    transition: 'border-color .15s, background .15s, box-shadow .15s, transform .1s',
+                    boxShadow: isDropTarget ? `0 0 16px ${q.activeBorder}` : 'none',
+                    transform: isDropTarget ? 'scale(1.02)' : 'scale(1)',
                     opacity: isPlaceholder ? 0.5 : 1,
                   }}
                 >
@@ -366,7 +450,9 @@ export default function UrgentTasksView() {
                   {isPlaceholder ? (
                     <div style={{ fontSize: 10, color: '#2a2450', textAlign: 'center', paddingTop: 8 }}>—</div>
                   ) : qTasks.length === 0 ? (
-                    <div style={{ fontSize: 10, color: '#2a2450', textAlign: 'center', paddingTop: 8 }}>拖入任务</div>
+                    <div style={{ fontSize: 10, color: '#2a2450', textAlign: 'center', paddingTop: 8 }}>
+                      {touchDrag ? '松手放入' : '长按拖入'}
+                    </div>
                   ) : (
                     qTasks.slice(0, 4).map(t => (
                       <TaskChip key={t.id} task={t} onComplete={handleComplete} compact />
@@ -379,7 +465,7 @@ export default function UrgentTasksView() {
 
           {/* Bottom holding boxes */}
           <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 9, color: '#534AB7', letterSpacing: '0.08em', marginBottom: 6 }}>── 待分配 ──</div>
+            <div style={{ fontSize: 9, color: '#534AB7', letterSpacing: '0.08em', marginBottom: 6 }}>── 待分配（长按拖入象限）──</div>
             {BOXES.map(box => {
               const boxTasks = byGroup[box.id];
               if (boxTasks.length === 0) return null;
@@ -398,7 +484,7 @@ export default function UrgentTasksView() {
                       key={t.id}
                       task={t}
                       draggable
-                      onDragStart={handleDragStart}
+                      onTouchDragStart={handleTouchDragStart}
                       compact
                     />
                   ))}
