@@ -111,6 +111,17 @@ pnpm test
 
 ---
 
+## 🤝 Claude Code 协作说明
+
+本项目同时由 **Manus Agent** 和 **Claude Code（Claude CLI）** 共同维护，GitHub 是唯一共享上下文。
+
+**协作规则：**
+- Owner 的每次修改指令，可能来自 Manus 或 Claude Code，两者都遵守同一套 Checklist
+- 每次 Claude Code 完成修改后：① 推送到 GitHub main 分支 ② 更新 PRODUCT_HANDOFF.md（版本号+0.1）③ 告诉 Owner commit hash
+- Manus 收到 Owner 指令"拉取最新代码"时，执行：`git fetch github && git checkout github/main -- .`，然后 `pnpm install`，不要自行开发
+
+---
+
 ## 📋 每次修改代码后必须执行的 Checklist
 
 > **每次完成功能或修复 Bug 后，必须按顺序执行以下全部步骤。缺少任何一步视为任务未完成。**

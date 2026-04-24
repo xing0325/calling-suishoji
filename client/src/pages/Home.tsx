@@ -37,7 +37,7 @@ interface SwipeState {
  * 六栏目：日历 / 日记 / 主页 / 责任 / 输入 / 输出
  */
 export default function Home() {
-  let { user, loading, error, isAuthenticated, logout } = useAuth();
+  let { user, loading, error, isAuthenticated, isGuest, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [calendarViewMode, setCalendarViewMode] = useState<'completed' | 'login' | 'diary' | 'overview'>('completed');
@@ -138,7 +138,7 @@ export default function Home() {
 
     setIsAnimating(true);
     const startOffset = pixelDistance;
-    const targetOffset = -(nextTabIndex - currentTabIndex) * viewportWidth + pixelDistance;
+    const targetOffset = -(nextTabIndex - currentTabIndex) * viewportWidth;
     const startTime = Date.now();
     const duration = 200;
 
@@ -246,6 +246,10 @@ export default function Home() {
     if (callingInput.trim()) {
       if (!isAuthenticated) {
         toast.error('请先登录', { description: '登录后即可使用AI智能分类功能' });
+        return;
+      }
+      if (isGuest) {
+        toast.info('游客模式', { description: '注册账号后即可保存记录并使用AI分类' });
         return;
       }
       createNote.mutate({ rawText: callingInput.trim() });

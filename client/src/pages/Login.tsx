@@ -330,6 +330,18 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           )}
         </div>
 
+        {/* 游客体验 */}
+        <button
+          onClick={() => {
+            localStorage.setItem('calling-guest', '1');
+            onLoginSuccess();
+          }}
+          className="w-full mt-4 py-2.5 rounded-xl text-sm transition-all duration-200 active:scale-95"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' }}
+        >
+          游客体验（只读，无需注册）
+        </button>
+
         {/* 底部说明 */}
         <p className="text-center text-xs mt-6" style={{ color: "rgba(255,255,255,0.2)" }}>
           登录即表示你同意使用条款 · 数据安全加密存储

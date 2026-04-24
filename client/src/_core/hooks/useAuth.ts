@@ -13,9 +13,12 @@ export function useAuth(options?: UseAuthOptions) {
     options ?? {};
   const utils = trpc.useUtils();
 
+  const isGuest = typeof window !== 'undefined' && localStorage.getItem('calling-guest') === '1';
+
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: !isGuest,
   });
 
   const logoutMutation = trpc.auth.logout.useMutation({
@@ -25,6 +28,12 @@ export function useAuth(options?: UseAuthOptions) {
   });
 
   const logout = useCallback(async () => {
+    if (isGuest) {
+      localStorage.removeItem('calling-guest');
+      utils.auth.me.setData(undefined, null);
+      window.location.reload();
+      return;
+    }
     try {
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
@@ -39,9 +48,18 @@ export function useAuth(options?: UseAuthOptions) {
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }
-  }, [logoutMutation, utils]);
+  }, [isGuest, logoutMutation, utils]);
 
   const state = useMemo(() => {
+    if (isGuest) {
+      return {
+        user: { id: 'guest', name: '游客', openId: 'guest' } as any,
+        loading: false,
+        error: null,
+        isAuthenticated: true,
+        isGuest: true,
+      };
+    }
     localStorage.setItem(
       "manus-runtime-user-info",
       JSON.stringify(meQuery.data)
@@ -51,8 +69,10 @@ export function useAuth(options?: UseAuthOptions) {
       loading: meQuery.isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
+      isGuest: false,
     };
   }, [
+    isGuest,
     meQuery.data,
     meQuery.error,
     meQuery.isLoading,

@@ -1,9 +1,10 @@
 ﻿# CALLING 产品交接文档
 
-> **版本**：v1.8（2026-04-23）
+> **版本**：v1.9（2026-04-23）
 > **当前 Checkpoint**：`57af53ef`
 > **最近更新（v1.7）**：Windows 本地开发支持——package.json dev 脚本改用 cross-env，可在 Windows/Claude Code 环境预览运行
 > **最近更新（v1.8）**：输入/输出页面 UI 重写为 DialPicker 组件，上下分栏布局，上半展示笔记卡片，下半为弧形拨盘+刻度盘，左右滑动切换分类，中心按钮进入详情页
+> **最近更新（v1.9）**：①修复页面切换弹跳动画 ②修复拨盘与页面滑动冲突 ③DialPicker 空数据时显示示例卡片 ④游客登录模式（只读体验）⑤MANUS_HANDOFF_GUIDE 新增 Claude Code 协作说明
 > **GitHub**：https://github.com/xing0325/calling-suishoji
 > **线上地址**：https://calling.manus.space
 > **编写目的**：供其他 coding agent 或开发者无缝衔接后续开发任务
@@ -394,3 +395,5 @@ pnpm test
 - **日程提醒**：双击日历日期添加日程，日程格子显示蓝色标记点
 - **全页面互联**：主页输入 AI 识别后自动刷新日历/日记/责任/输入/输出各页面
 - **日记今日提示**：「看看今天我都做了些啥」默认隐藏，点击展开 AI 扫描历史提示
+
+

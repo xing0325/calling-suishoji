@@ -12,6 +12,25 @@ const OUTPUT_SUBCAT: Record<string, string> = {
 
 const R = 96, CX = 120, CY = 120;
 
+const EXAMPLE_CARDS: Record<string, { title: string; tag: string }> = {
+  movie:         { title: '《千与千寻》中，无脸男的孤独感让我深思社会认同的本质', tag: '宫崎骏' },
+  book:          { title: '《思考，快与慢》第三章——小数定律的陷阱，决策者如何被样本量误导', tag: '心理学' },
+  article:       { title: 'Paul Graham：保持初心的最大障碍不是能力，而是对"失败"的定义', tag: '创业' },
+  game:          { title: '《空洞骑士》的地图设计——用迷失感制造探索欲的哲学', tag: '游戏设计' },
+  podcast:       { title: '硅谷101：为什么 AI 公司的护城河比 SaaS 窄？网络效应的变形', tag: '科技' },
+  concept:       { title: '二阶效应：每个决策都会产生我们没有预见的后果，而那些后果才是关键', tag: '思维模型' },
+  person:        { title: '费曼：用"橡皮鸭教学法"把复杂系统讲给六岁孩子听', tag: '物理学家' },
+  course:        { title: 'MIT 6.824 — Raft 共识算法的领导人选举机制', tag: '分布式系统' },
+  tool:          { title: 'Obsidian 双向链接 + Dataview 插件，把笔记变成个人知识图谱', tag: '效率工具' },
+  topic:         { title: '为什么年轻人开始逃离城市？反城镇化浪潮的背后逻辑', tag: '社会观察' },
+  inspiration:   { title: '用"倒叙剪辑"重剪一期播客，把最高潮的片段放到片头90秒', tag: '创作灵感' },
+  edit_idea:     { title: '字幕节奏卡点：把采访停顿压缩到0.3秒，语速感觉加快40%', tag: '剪辑技巧' },
+  drama_idea:    { title: '主角不说谎，但每句真话都被误解——信息不对称的戏剧张力', tag: '编剧' },
+  writing_topic: { title: '当代年轻人如何重新定义"成功"——用三个真实人物结构论点', tag: '非虚构写作' },
+  design_idea:   { title: '"留白即信息"：去掉50%元素后，重要内容反而更突出', tag: 'UI设计' },
+  game_design:   { title: '动态难度调整：敌人血量根据玩家失败次数隐性下降', tag: '游戏机制' },
+};
+
 // 60 tick marks around the dial ring
 const TICKS = Array.from({ length: 60 }, (_, i) => {
   const angle = i * (Math.PI * 2 / 60);
@@ -110,11 +129,38 @@ const DialPicker: React.FC<DialPickerProps> = ({ mainCategory, items, onEnter })
 
         {/* Card stack */}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {notes.length === 0 ? (
-            <div style={{ color: '#2a2450', fontSize: '13px', textAlign: 'center', marginTop: '24px' }}>
-              还没有{currentItem.title}记录
-            </div>
-          ) : (
+          {notes.length === 0 ? (() => {
+            const ex = EXAMPLE_CARDS[subCat];
+            return ex ? (
+              <div style={{
+                background: 'transparent',
+                border: '0.5px dashed #2a2450',
+                borderRadius: '14px',
+                padding: '12px 14px',
+                position: 'relative',
+              }}>
+                <span style={{
+                  position: 'absolute', top: '10px', right: '12px',
+                  fontSize: '9px', color: '#534AB7', background: '#1a1640',
+                  padding: '1px 7px', borderRadius: '20px', letterSpacing: '0.04em',
+                }}>示例</span>
+                <div style={{ fontSize: '10px', color: '#2a2450', marginBottom: '4px', letterSpacing: '0.03em' }}>示例笔记</div>
+                <div style={{ fontSize: '13px', color: '#4a4470', lineHeight: 1.55, paddingRight: '40px' }}>
+                  {ex.title}
+                </div>
+                <span style={{
+                  display: 'inline-block', marginTop: '6px', fontSize: '10px',
+                  color: '#3d375a', background: '#13102a', padding: '2px 8px', borderRadius: '20px',
+                }}>
+                  {ex.tag}
+                </span>
+              </div>
+            ) : (
+              <div style={{ color: '#2a2450', fontSize: '13px', textAlign: 'center', marginTop: '24px' }}>
+                还没有{currentItem.title}记录
+              </div>
+            );
+          })() : (
             notes.slice(0, 3).map((note, i) => (
               <div key={note.id} style={{
                 background: '#13102a',
@@ -154,6 +200,9 @@ const DialPicker: React.FC<DialPickerProps> = ({ mainCategory, items, onEnter })
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
         >
           {/* Tick marks */}
           <svg
