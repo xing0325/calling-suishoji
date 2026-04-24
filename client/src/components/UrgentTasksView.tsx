@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { toast } from 'sonner';
@@ -109,16 +109,25 @@ function TaskChip({ task, draggable, onDragStart, onComplete, compact }: TaskChi
   );
 }
 
-const QUADRANTS = [
-  { id: 'q2', label: '重要不紧急', sub: '计划', color: '#7C3AED', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.3)' },
-  { id: 'q1', label: '重要且紧急', sub: '立即做', color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.35)' },
-  { id: 'q3', label: '紧急不重要', sub: '委派', color: '#f97316', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.3)' },
-] as const;
+/* Standard Eisenhower matrix layout:
+ *   q2 (重要不紧急)  |  q1 (重要且紧急)
+ *   -----------------+-----------------
+ *   q4 (不重要不紧急) |  q3 (紧急不重要)
+ *
+ * q4 is not used (tasks there wouldn't appear in priority list),
+ * so we render a muted placeholder in the bottom-left cell.
+ */
+const QUADRANT_GRID = [
+  { id: 'q2' as const, label: '重要不紧急', sub: '计划', color: '#7C3AED', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.3)', activeBorder: 'rgba(124,58,237,0.7)' },
+  { id: 'q1' as const, label: '重要且紧急', sub: '立即做', color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.35)', activeBorder: 'rgba(239,68,68,0.75)' },
+  { id: null, label: '不重要不紧急', sub: '暂缓', color: '#3a3660', bg: 'rgba(255,255,255,0.02)', border: 'rgba(255,255,255,0.06)', activeBorder: 'rgba(255,255,255,0.06)' },
+  { id: 'q3' as const, label: '紧急不重要', sub: '委派', color: '#f97316', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.3)', activeBorder: 'rgba(249,115,22,0.7)' },
+];
 
 const BOXES = [
-  { id: 'b1', label: '有重要分，无截止日', color: '#a855f7', bg: 'rgba(168,85,247,0.07)', border: 'rgba(168,85,247,0.3)' },
-  { id: 'b2', label: '有截止日，无重要分', color: '#f97316', bg: 'rgba(249,115,22,0.07)', border: 'rgba(249,115,22,0.3)' },
-  { id: 'b3', label: '被提到放首页', color: '#38bdf8', bg: 'rgba(56,189,248,0.07)', border: 'rgba(56,189,248,0.3)' },
+  { id: 'b1' as const, label: '有重要分，无截止日', color: '#a855f7', bg: 'rgba(168,85,247,0.07)', border: 'rgba(168,85,247,0.3)' },
+  { id: 'b2' as const, label: '有截止日，无重要分', color: '#f97316', bg: 'rgba(249,115,22,0.07)', border: 'rgba(249,115,22,0.3)' },
+  { id: 'b3' as const, label: '被提到放首页', color: '#38bdf8', bg: 'rgba(56,189,248,0.07)', border: 'rgba(56,189,248,0.3)' },
 ] as const;
 
 interface DropConfirm {
@@ -131,8 +140,10 @@ interface DropConfirm {
 export default function UrgentTasksView() {
   const { isAuthenticated, isGuest } = useAuth();
   const [view, setView] = useState<'card' | 'quadrant'>('card');
+  const [expanded, setExpanded] = useState(false);
   const [askOnDrop, setAskOnDrop] = useState(() => localStorage.getItem('calling-ask-on-drop') === '1');
   const [dragTaskId, setDragTaskId] = useState<number | null>(null);
+  const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
   const [dropConfirm, setDropConfirm] = useState<DropConfirm | null>(null);
   const [confirmImportance, setConfirmImportance] = useState<number>(4.0);
   const [confirmDeadlineDays, setConfirmDeadlineDays] = useState<number>(3);
@@ -165,8 +176,19 @@ export default function UrgentTasksView() {
     setDragTaskId(taskId);
   };
 
+  const handleDragOver = useCallback((e: React.DragEvent, quadrantId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverQuadrant(quadrantId);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverQuadrant(null);
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent, quadrant: Quadrant) => {
     e.preventDefault();
+    setDragOverQuadrant(null);
     if (dragTaskId === null) return;
     const task = tasks.find(t => t.id === dragTaskId);
     if (!task) { setDragTaskId(null); return; }
@@ -230,7 +252,11 @@ export default function UrgentTasksView() {
   const byGroup: Record<string, Note[]> = { q1: [], q2: [], q3: [], b1: [], b2: [], b3: [] };
   tasks.forEach(t => byGroup[classify(t as Note)].push(t as Note));
 
-  const allCount = tasks.filter(t => !t.completed).length;
+  const incompleteTasks = tasks.filter(t => !t.completed);
+  const allCount = incompleteTasks.length;
+  const CARD_LIMIT = 6;
+  const showExpandBtn = incompleteTasks.length > CARD_LIMIT && !expanded;
+  const displayedTasks = expanded ? incompleteTasks : incompleteTasks.slice(0, CARD_LIMIT);
 
   return (
     <div>
@@ -267,42 +293,79 @@ export default function UrgentTasksView() {
               暂无紧急或重要任务 ✨
             </div>
           ) : (
-            tasks.filter(t => !t.completed).slice(0, 6).map(task => (
-              <TaskChip key={task.id} task={task as Note} onComplete={handleComplete} />
-            ))
+            <>
+              {displayedTasks.map(task => (
+                <TaskChip key={task.id} task={task as Note} onComplete={handleComplete} />
+              ))}
+              {showExpandBtn && (
+                <button
+                  onClick={() => setExpanded(true)}
+                  style={{
+                    width: '100%', padding: '6px 0', marginTop: 2,
+                    background: 'rgba(83,74,183,0.08)', border: '1px dashed rgba(83,74,183,0.3)',
+                    borderRadius: 8, color: '#534AB7', fontSize: 11, cursor: 'pointer',
+                    transition: 'background .2s',
+                  }}
+                >
+                  查看全部 {allCount} 条
+                </button>
+              )}
+              {expanded && incompleteTasks.length > CARD_LIMIT && (
+                <button
+                  onClick={() => setExpanded(false)}
+                  style={{
+                    width: '100%', padding: '6px 0', marginTop: 2,
+                    background: 'transparent', border: '1px dashed rgba(83,74,183,0.2)',
+                    borderRadius: 8, color: '#3a3660', fontSize: 11, cursor: 'pointer',
+                  }}
+                >
+                  收起
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
 
-      {/* QUADRANT VIEW */}
+      {/* QUADRANT VIEW — standard 2×2 Eisenhower matrix */}
       {view === 'quadrant' && (
         <div>
-          {/* Labels */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
-            <span style={{ fontSize: 9, color: '#534AB7', letterSpacing: '0.1em' }}>↑ 重要</span>
+          {/* Axis labels */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, padding: '0 2px' }}>
+            <span style={{ fontSize: 9, color: '#534AB7', letterSpacing: '0.08em' }}>↑ 重要</span>
+            <span style={{ fontSize: 9, color: '#534AB7', letterSpacing: '0.08em' }}>紧急 →</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 4 }}>
-            {(['q2', 'q1', 'q3'] as const).map(qId => {
-              const q = QUADRANTS.find(x => x.id === qId)!;
-              const qTasks = byGroup[qId].filter(t => !t.completed);
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 4, marginBottom: 4 }}>
+            {QUADRANT_GRID.map((q, idx) => {
+              const qId = q.id;
+              const qTasks = qId ? byGroup[qId].filter(t => !t.completed) : [];
+              const isDropTarget = qId && dragOverQuadrant === qId;
+              const isPlaceholder = qId === null;
+
               return (
                 <div
-                  key={qId}
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={e => handleDrop(e, qId)}
+                  key={idx}
+                  onDragOver={qId ? (e) => handleDragOver(e, qId) : undefined}
+                  onDragLeave={qId ? handleDragLeave : undefined}
+                  onDrop={qId ? (e) => handleDrop(e, qId) : undefined}
                   style={{
-                    gridColumn: qId === 'q3' ? '1 / -1' : 'auto',
                     minHeight: 80,
                     borderRadius: 10,
-                    border: `1px solid ${q.border}`,
-                    background: q.bg,
+                    border: `1px solid ${isDropTarget ? q.activeBorder : q.border}`,
+                    background: isDropTarget ? `${q.bg.replace('0.08', '0.18').replace('0.02', '0.06')}` : q.bg,
                     padding: '8px 8px 4px',
+                    transition: 'border-color .15s, background .15s, box-shadow .15s',
+                    boxShadow: isDropTarget ? `0 0 12px ${q.activeBorder}` : 'none',
+                    opacity: isPlaceholder ? 0.5 : 1,
                   }}
                 >
                   <div style={{ fontSize: 9, color: q.color, fontWeight: 600, marginBottom: 4, letterSpacing: '0.04em' }}>
                     {q.label} <span style={{ opacity: 0.6, fontWeight: 400 }}>· {q.sub}</span>
                   </div>
-                  {qTasks.length === 0 ? (
+                  {isPlaceholder ? (
+                    <div style={{ fontSize: 10, color: '#2a2450', textAlign: 'center', paddingTop: 8 }}>—</div>
+                  ) : qTasks.length === 0 ? (
                     <div style={{ fontSize: 10, color: '#2a2450', textAlign: 'center', paddingTop: 8 }}>拖入任务</div>
                   ) : (
                     qTasks.slice(0, 4).map(t => (
@@ -380,7 +443,7 @@ export default function UrgentTasksView() {
           }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#e8e4ff', marginBottom: 4 }}>确认移入象限</div>
             <div style={{ fontSize: 11, color: '#534AB7', marginBottom: 16 }}>
-              「{dropConfirm.task.title || dropConfirm.task.rawText.slice(0, 20)}」→ {QUADRANTS.find(q => q.id === dropConfirm.quadrant)?.label}
+              「{dropConfirm.task.title || dropConfirm.task.rawText.slice(0, 20)}」→ {QUADRANT_GRID.find(q => q.id === dropConfirm.quadrant)?.label}
             </div>
             {dropConfirm.importanceScore !== null && (
               <div style={{ marginBottom: 12 }}>
