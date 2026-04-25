@@ -269,7 +269,7 @@ export default function UrgentTasksView() {
       document.removeEventListener('touchend', handleEnd);
       document.removeEventListener('touchcancel', handleCancel);
     };
-  }, [touchDrag, findQuadrantAt]);
+  }, [touchDrag, findQuadrantAt, executeDrop]);
 
   const executeDrop = useCallback((taskId: number, quadrant: Quadrant) => {
     const task = tasks.find(t => t.id === taskId);
@@ -467,7 +467,7 @@ export default function UrgentTasksView() {
           <div style={{ marginTop: 8 }}>
             <div style={{ fontSize: 9, color: '#534AB7', letterSpacing: '0.08em', marginBottom: 6 }}>── 待分配（长按拖入象限）──</div>
             {BOXES.map(box => {
-              const boxTasks = byGroup[box.id];
+              const boxTasks = byGroup[box.id].filter(t => !t.completed);
               if (boxTasks.length === 0) return null;
               return (
                 <div key={box.id} style={{
