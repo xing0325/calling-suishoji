@@ -223,6 +223,33 @@ export default function UrgentTasksView() {
     return null;
   }, []);
 
+  const executeDrop = useCallback((taskId: number, quadrant: Quadrant) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const needsDeadline = (quadrant === 'q1' || quadrant === 'q3') && !task.deadline;
+    const needsImportance = (quadrant === 'q1' || quadrant === 'q2') && (task.importanceScore === null || task.importanceScore < 3.5);
+    const defaultDeadline = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+    const defaultImportance = quadrant === 'q3' ? 2.0 : 4.0;
+
+    if (askOnDrop && (needsDeadline || needsImportance)) {
+      setConfirmImportance(defaultImportance);
+      setConfirmDeadlineDays(3);
+      setDropConfirm({
+        task: task as Note,
+        quadrant,
+        importanceScore: needsImportance ? defaultImportance : null,
+        deadline: needsDeadline ? defaultDeadline : null,
+      });
+    } else {
+      updateImportance.mutate({
+        id: task.id,
+        ...(needsImportance ? { importanceScore: defaultImportance } : {}),
+        ...(needsDeadline ? { deadline: defaultDeadline } : {}),
+      });
+    }
+  }, [tasks, askOnDrop, updateImportance]);
+
   // Touch drag handlers
   const handleTouchDragStart = useCallback((taskId: number, _e: React.TouchEvent) => {
     const task = tasks.find(t => t.id === taskId);
@@ -270,33 +297,6 @@ export default function UrgentTasksView() {
       document.removeEventListener('touchcancel', handleCancel);
     };
   }, [touchDrag, findQuadrantAt, executeDrop]);
-
-  const executeDrop = useCallback((taskId: number, quadrant: Quadrant) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    const needsDeadline = (quadrant === 'q1' || quadrant === 'q3') && !task.deadline;
-    const needsImportance = (quadrant === 'q1' || quadrant === 'q2') && (task.importanceScore === null || task.importanceScore < 3.5);
-    const defaultDeadline = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
-    const defaultImportance = quadrant === 'q3' ? 2.0 : 4.0;
-
-    if (askOnDrop && (needsDeadline || needsImportance)) {
-      setConfirmImportance(defaultImportance);
-      setConfirmDeadlineDays(3);
-      setDropConfirm({
-        task: task as Note,
-        quadrant,
-        importanceScore: needsImportance ? defaultImportance : null,
-        deadline: needsDeadline ? defaultDeadline : null,
-      });
-    } else {
-      updateImportance.mutate({
-        id: task.id,
-        ...(needsImportance ? { importanceScore: defaultImportance } : {}),
-        ...(needsDeadline ? { deadline: defaultDeadline } : {}),
-      });
-    }
-  }, [tasks, askOnDrop, updateImportance]);
 
   const confirmDrop = () => {
     if (!dropConfirm) return;
