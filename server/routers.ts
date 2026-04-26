@@ -5,6 +5,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { notesRouter, insightRouter } from "./routers/notes";
 import { authRouter } from "./routers/auth";
 import { schedulesRouter } from "./routers/schedules";
+import { customCategoriesRouter } from "./routers/customCategories";
 
 export const appRouter = router({
   system: systemRouter,
@@ -30,6 +31,7 @@ export const appRouter = router({
   notes: notesRouter,
   insight: insightRouter,
   schedules: schedulesRouter,
+  customCategories: customCategoriesRouter,
 });
 
 export type AppRouter = typeof appRouter;

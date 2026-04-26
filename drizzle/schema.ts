@@ -196,3 +196,22 @@ export const classificationLogs = mysqlTable('classification_logs', {
 });
 export type ClassificationLog = typeof classificationLogs.$inferSelect;
 export type InsertClassificationLog = typeof classificationLogs.$inferInsert;
+
+/**
+ * 用户自定义分类表 - 输入/输出页面的自定义拨盘分类
+ */
+export const customCategories = mysqlTable('custom_categories', {
+  id: int('id').autoincrement().primaryKey(),
+  userId: int('userId').notNull(),
+  /** 'input' 或 'output' */
+  parentCategory: varchar('parentCategory', { length: 10 }).notNull(),
+  /** slug，如 custom_1745000000000 */
+  subCategory: varchar('subCategory', { length: 100 }).notNull(),
+  /** 显示名称 */
+  label: varchar('label', { length: 100 }).notNull(),
+  /** emoji 图标 */
+  icon: varchar('icon', { length: 10 }).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export type CustomCategory = typeof customCategories.$inferSelect;

@@ -60,33 +60,11 @@ export default function Home() {
   });
   const [isAnimating, setIsAnimating] = useState(false);
   const [selectedInnerCategory, setSelectedInnerCategory] = useState<string | null>(null);
+  const [selectedInnerTitle, setSelectedInnerTitle] = useState('');
+  const [selectedInnerIcon, setSelectedInnerIcon] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
-
-  // 拨号盘项目 - 输入（月亮表盘）
-  const moonItems = [
-    { id: '1', title: '电影', icon: '🎬' },
-    { id: '2', title: '书籍', icon: '📕' },
-    { id: '3', title: '文章', icon: '📰' },
-    { id: '4', title: '游戏', icon: '🎮' },
-    { id: '5', title: '播客', icon: '🎙️' },
-    { id: '6', title: '概念', icon: '💡' },
-    { id: '7', title: '人物', icon: '👤' },
-    { id: '8', title: '课程', icon: '🎓' },
-    { id: '9', title: '工具', icon: '🔧' },
-  ];
-
-  // 拨号盘项目 - 输出（太阳表盘）
-  const sunItems = [
-    { id: '1', title: '选题', icon: '📝' },
-    { id: '2', title: '灵感', icon: '✨' },
-    { id: '3', title: '剪辑灵感', icon: '✂️' },
-    { id: '4', title: '戏剧灵感', icon: '🎭' },
-    { id: '5', title: '写作选题', icon: '✍️' },
-    { id: '6', title: '设计灵感', icon: '🎨' },
-    { id: '7', title: '游戏设计', icon: '🕹️' },
-  ];
 
   const tabs: TabType[] = ['calendar', 'diary', 'home', 'world', 'input', 'output'];
   const currentTabIndex = tabs.indexOf(activeTab);
@@ -403,8 +381,7 @@ export default function Home() {
         <div className="w-screen flex-shrink-0" style={{ height: 'calc(100vh - 56px)' }}>
           <DialPicker
             mainCategory="input"
-            items={moonItems}
-            onEnter={(key) => setSelectedInnerCategory(key)}
+            onEnter={(key, title, icon) => { setSelectedInnerCategory(key); setSelectedInnerTitle(title); setSelectedInnerIcon(icon); }}
           />
         </div>
 
@@ -412,8 +389,7 @@ export default function Home() {
         <div className="w-screen flex-shrink-0" style={{ height: 'calc(100vh - 56px)' }}>
           <DialPicker
             mainCategory="output"
-            items={sunItems}
-            onEnter={(key) => setSelectedInnerCategory(key)}
+            onEnter={(key, title, icon) => { setSelectedInnerCategory(key); setSelectedInnerTitle(title); setSelectedInnerIcon(icon); }}
           />
         </div>
       </div>
@@ -423,16 +399,8 @@ export default function Home() {
         <div className="fixed inset-0 z-50 bg-background">
           <InnerCallingDetail
             category={selectedInnerCategory}
-            categoryTitle={
-              selectedInnerCategory.startsWith('input-')
-                ? moonItems.find((item) => `input-${item.id}` === selectedInnerCategory)?.title || ''
-                : sunItems.find((item) => `output-${item.id}` === selectedInnerCategory)?.title || ''
-            }
-            icon={
-              selectedInnerCategory.startsWith('input-')
-                ? moonItems.find((item) => `input-${item.id}` === selectedInnerCategory)?.icon || ''
-                : sunItems.find((item) => `output-${item.id}` === selectedInnerCategory)?.icon || ''
-            }
+            categoryTitle={selectedInnerTitle}
+            icon={selectedInnerIcon}
             onBack={() => setSelectedInnerCategory(null)}
           />
         </div>
