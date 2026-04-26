@@ -1,12 +1,13 @@
 ﻿# CALLING 产品交接文档
 
-> **版本**：v2.1（2026-04-25）
+> **版本**：v2.2（2026-04-26）
 > **当前 Checkpoint**：`57af53ef`
 > **最近更新（v1.7）**：Windows 本地开发支持——package.json dev 脚本改用 cross-env，可在 Windows/Claude Code 环境预览运行
 > **最近更新（v1.8）**：输入/输出页面 UI 重写为 DialPicker 组件，上下分栏布局，上半展示笔记卡片，下半为弧形拨盘+刻度盘，左右滑动切换分类，中心按钮进入详情页
 > **最近更新（v1.9）**：①修复页面切换弹跳动画 ②修复拨盘与页面滑动冲突 ③DialPicker 空数据时显示示例卡片 ④游客登录模式（只读体验）⑤MANUS_HANDOFF_GUIDE 新增 Claude Code 协作说明
 > **最近更新（v2.0）**：首页新增紧急任务视图（替换快速导航）：卡片视图+重要紧急四象限，notes表新增importanceScore/pinToHome字段，AI自动评分，责任页添加任务时支持手动设置重要程度热力图，拖入象限可更新数值（含确认弹窗可选）
 > **最近更新（v2.1）**：修复UrgentTasksView两个bug：①待分配框会显示已完成任务（应过滤completed）②executeDrop未加入useEffect依赖数组导致stale closure风险
+> **最近更新（v2.2）**：输入/输出页面新增「未归类」分类（AI无法识别具体子类时归入）；新增自定义分类功能（拨盘右下角"+"，选名称+20个预设emoji，AI分类时自动注入自定义分类）；DB新增custom_categories表（需执行drizzle/0009_custom_categories.sql）
 > **GitHub**：https://github.com/xing0325/calling-suishoji
 > **线上地址**：https://calling.manus.space
 > **编写目的**：供其他 coding agent 或开发者无缝衔接后续开发任务
