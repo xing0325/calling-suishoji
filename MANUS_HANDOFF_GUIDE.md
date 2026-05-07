@@ -188,38 +188,44 @@ pnpm install
 
 ---
 
-## 七、当前版本状态（最后更新：2026-04-23）
+## 七、当前版本状态（最后更新：2026-05-08）
 
-**版本**：v2.0 | **GitHub Commit**：`pending` | **Manus Checkpoint**：`57af53ef`
+**版本**：v2.2 | **GitHub Commit**：`0057718` | **Manus Checkpoint**：`57af53ef`
 
-**v2.0 迁移必做：运行数据库迁移**
+**迁移到新 Manus 账号必做：按顺序执行所有 drizzle/*.sql 文件**
+
+重点包含以下迁移（"列已存在"/"表已存在"报错可跳过）：
 ```sql
+-- 0008_priority_fields.sql（v2.0 新增）
 ALTER TABLE `notes` ADD `importanceScore` float;
 ALTER TABLE `notes` ADD `pinToHome` boolean NOT NULL DEFAULT false;
-```
-用 `webdev_execute_sql` 执行以上两条 SQL（如报"列已存在"可跳过）。
 
-**已完成功能：**
-- 账号密码 + 邮箱验证码登录，JWT 30天持久化
+-- 0009_custom_categories.sql（v2.2 新增）
+CREATE TABLE `custom_categories` (
+  `id` int AUTO_INCREMENT PRIMARY KEY,
+  `userId` int NOT NULL,
+  `parentCategory` varchar(10) NOT NULL,
+  `subCategory` varchar(100) NOT NULL,
+  `label` varchar(100) NOT NULL,
+  `icon` varchar(10) NOT NULL,
+  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+```
+
+**已完成功能（v2.2）：**
+- 账号密码 + 邮箱验证码登录，JWT 30天持久化，游客只读模式
 - 主页随手记 + AI 自动分类（task/wish/input/output/draft）
-- **[v1.6]** schedule 改为附加属性：任何 category 都可附带 scheduleDate/scheduleTime，有时间则自动创建日程
-- **[v1.6]** notes 表新增 scheduleDate（VARCHAR 10）和 scheduleTime（VARCHAR 5）字段
-- **[v1.6]** 日记"看看今天我都做了些啥"改为直接查询 notes.scheduleDate = 当天，精准同步
-- **[v1.6]** server/db.ts 新增 getRawPool() 函数，绕过 only_full_group_by 执行原始 SQL
+- schedule 为附加属性：任何 category 可附带 scheduleDate/scheduleTime，自动创建日程
 - 草稿箱（AI 无法识别时自动归入）
-- 日历多视图（完成热力图/登录/日记/总览）
-- 日历双击添加日程（日期预填/时间可选/提醒开关）
-- 日历格子蓝色小点标记有日程的日期
-- 日记编辑器 + AI 提取待办弹窗
-- 日记页"看看今天我都做了些啥"默认隐藏折叠
-- 世界的Calling（TodoList）
-- 内心的Calling（拨号盘）
+- 日历多视图（完成热力图/登录/日记/总览），双击添加日程，蓝点标记
+- 日记编辑器 + AI 提取待办弹窗，今日提示默认折叠
+- 世界的Calling（任务看板，重要程度热力图）
+- 内心的Calling（拨盘，含内置+自定义+未归类分类）
+- 首页紧急任务视图（卡片 + 重要紧急四象限，触摸长按拖拽）
 - 周总结/月洞察 AI 生成
-- 全页面互联：主页输入 AI 分类后自动刷新日历/世界/内心/日记
-- Web Push 提醒基础架构完备（schedules 表 + 定时任务）
-- AI 分类 Prompt 注入今天日期，避免日期识别错误
-- 日历格子日程标记点对所有日期（包括未来）显示
-- 未来日期可以点击查看/添加日程，日历可切换到未来月份
+- 全页面互联
+- Web Push 提醒（schedules 表 + 定时任务）
+- 自定义拨盘分类（custom_categories 表，AI 注入识别）
 
 **待实现功能（需 Owner 明确指令后才能开发）：**
 - 草稿箱独立页面
@@ -227,4 +233,3 @@ ALTER TABLE `notes` ADD `pinToHome` boolean NOT NULL DEFAULT false;
 - 微信机器人集成
 - DDL 到期提醒
 - AI 识别为 schedule 后弹窗确认
-- 日历"完成"热力图（calendarActivity 查询存在 only_full_group_by 问题，待修复）
