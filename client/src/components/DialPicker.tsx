@@ -117,10 +117,10 @@ const DialPicker: React.FC<DialPickerProps> = ({ mainCategory, onEnter }) => {
   const safeIndex = Math.min(current, n - 1);
   const currentItem = items[safeIndex];
 
-  // 笔记查询
+  // 笔记查询（游客不查询）
   const { data: notes = [] } = trpc.notes.list.useQuery(
     { category: mainCategory, subCategory: currentItem.subCategory, limit: 50 },
-    { staleTime: 30_000 }
+    { enabled: isAuthenticated && !isGuest, staleTime: 30_000 }
   );
 
   // 拨盘滑动

@@ -3,34 +3,16 @@ import { ChevronLeft, Plus, Trash2, Loader2, Sparkles } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
-// 分类到subCategory的映射
-const CATEGORY_TO_SUBCATEGORY: Record<string, string> = {
-  'input-1': 'movie',
-  'input-2': 'book',
-  'input-3': 'article',
-  'input-4': 'game',
-  'input-5': 'podcast',
-  'input-6': 'concept',
-  'input-7': 'person',
-  'input-8': 'course',
-  'input-9': 'tool',
-  'output-1': 'topic',
-  'output-2': 'inspiration',
-  'output-3': 'edit_idea',
-  'output-4': 'drama_idea',
-  'output-5': 'writing_topic',
-  'output-6': 'design_idea',
-  'output-7': 'game_design',
-};
-
-const MAIN_CATEGORY: Record<string, string> = {
-  'input-1': 'input', 'input-2': 'input', 'input-3': 'input',
-  'input-4': 'input', 'input-5': 'input', 'input-6': 'input',
-  'input-7': 'input', 'input-8': 'input', 'input-9': 'input',
-  'output-1': 'output', 'output-2': 'output', 'output-3': 'output',
-  'output-4': 'output', 'output-5': 'output', 'output-6': 'output',
-  'output-7': 'output',
-};
+// key 格式："{mainCategory}-{subCategory}"，如 "input-movie"、"output-custom_xxx"
+// 直接解析，无需硬编码映射表
+function parseCategory(key: string): { mainCategory: string; subCategory: string } {
+  const idx = key.indexOf('-');
+  if (idx === -1) return { mainCategory: '', subCategory: '' };
+  return {
+    mainCategory: key.slice(0, idx),
+    subCategory: key.slice(idx + 1),
+  };
+}
 
 interface InnerCallingDetailProps {
   category: string;
@@ -52,8 +34,7 @@ export const InnerCallingDetail: React.FC<InnerCallingDetailProps> = ({
   const [newItem, setNewItem] = useState('');
   const [newDescription, setNewDescription] = useState('');
 
-  const subCategory = CATEGORY_TO_SUBCATEGORY[category];
-  const mainCategory = MAIN_CATEGORY[category];
+  const { mainCategory, subCategory } = parseCategory(category);
 
   // 从数据库加载该分类的笔记
   const { data: notes, isLoading, refetch } = trpc.notes.list.useQuery(
