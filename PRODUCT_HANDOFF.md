@@ -346,16 +346,44 @@ node -e "const wp=require('web-push');const k=wp.generateVAPIDKeys();console.log
 
 ---
 
-## 十、本地开发
+## 十、本地开发 / Manus 部署
 
+### Manus 平台（推荐，无需本地数据库）
+```bash
+pnpm install
+pnpm test          # 运行测试
+npx tsc --noEmit   # 类型检查
+# 启动服务用 webdev_restart_server，不用 pnpm dev
+```
+
+### 本地开发（需自备数据库）
 ```bash
 pnpm install
 cp .env.example .env   # 填写 DATABASE_URL / JWT_SECRET / BUILT_IN_FORGE_API_KEY
 pnpm dev
-pnpm test
 ```
 
-数据库迁移（新环境）：按编号顺序手动执行 `drizzle/` 目录下所有 `.sql` 文件，"表已存在"报错可忽略。
+> **注意**：`BUILT_IN_FORGE_API_KEY` 是 Manus 平台专有，本地用 OpenAI/DeepSeek 替换时需同时修改 `server/_core/llm.ts` 里的 API URL。
+
+### 数据库迁移说明（重要）
+
+`drizzle/` 目录下有两类 SQL 文件：
+
+**✅ 需要执行的（按此顺序）：**
+1. `0000_goofy_ser_duncan.sql` — 初始表结构
+2. `0001_medical_vindicator.sql` 到 `0007_tense_mattie_franklin.sql` — 历史迁移
+3. `0008_priority_fields.sql` — 添加 importanceScore / pinToHome 字段
+4. `0009_custom_categories.sql` — 创建 custom_categories 表
+
+**❌ 忽略（历史遗留孤儿文件，不要执行）：**
+- `0000_chemical_talkback.sql`
+- `0000_lucky_black_widow.sql`
+- `0000_wet_morph.sql`
+- `0006_aspiring_bruce_banner.sql`
+
+这几个是不同 Manus 账号 init 时留下的重复残留，执行会报"表已存在"冲突。
+
+**后续新增迁移**：继续用手写 SQL 文件方式（如 `0010_xxx.sql`），在 Manus 上用 `webdev_execute_sql` 执行，不走 `drizzle-kit generate`（新账号没有迁移历史，`pnpm db:push` 会报错）。
 
 ---
 
